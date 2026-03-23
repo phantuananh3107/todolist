@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 @Table(name = "User")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -22,6 +23,8 @@ public class User {
     private String password;
 
     private String role; // ADMIN hoặc USER
+
+    private Boolean isActive = true; // 🔥 thêm dòng này
 
     private LocalDateTime createdAt = LocalDateTime.now();
 }
