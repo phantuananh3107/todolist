@@ -12,6 +12,8 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private Boolean isActive = true;
+
     @Column(nullable = false)
     private String name; // Học tập, Công việc, Cá nhân [cite: 140]
 

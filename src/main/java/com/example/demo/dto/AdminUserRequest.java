@@ -3,10 +3,11 @@ package com.example.demo.dto;
 import lombok.*;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
-public class LoginResponse {
-    private String accessToken;
-    private String refreshToken;
+public class AdminUserRequest {
     private String username;
-    private String role;
     private String email;
+    private String role;
+    private Boolean isActive;
+    private String password;
+    private String confirmPassword;
 }

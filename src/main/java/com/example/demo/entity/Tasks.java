@@ -3,6 +3,7 @@ package com.example.demo.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "Tasks")
@@ -11,6 +12,8 @@ public class Tasks {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    private Boolean isActive = true;
 
     @Column(nullable = false)
     private String title;
@@ -35,6 +38,9 @@ public class Tasks {
     private Category category; // Thuộc nhóm nào [cite: 138]
 
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Reminder> reminders;
 
     public enum Priority { LOW, MEDIUM, HIGH }
     public enum Status { TODO, DOING, DONE, OVERDUE }

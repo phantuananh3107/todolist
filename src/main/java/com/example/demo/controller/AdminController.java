@@ -1,11 +1,16 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.AdminUserRequest;
 import com.example.demo.dto.UserStatsDTO;
+import com.example.demo.dto.UserResponseDTO;
 import com.example.demo.entity.User;
 import com.example.demo.repository.TaskRepository;
 import com.example.demo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,6 +18,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
     @Autowired
@@ -21,41 +27,120 @@ public class AdminController {
     @Autowired
     private TaskRepository taskRepository;
 
-    // 1. Xem danh sách người dùng
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    // 1. Xem danh sách người dùng (ẩn password trước khi trả về)
     @GetMapping("/users")
-    public List<User> getAllUsers() {
-        // Có thể ẩn password trong thực tế, nhưng hiện tại User entity trả về hết
-        return userRepository.findAll();
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
+        String currentUserId = SecurityContextHolder.getContext().getAuthentication().getName();
+        List<User> users = userRepository.findAll();
+        List<UserResponseDTO> result = users.stream()
+                .filter(u -> !u.getId().toString().equals(currentUserId)) // Lọc bỏ chính mình
+                .map(UserResponseDTO::new)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(result);
     }
 
-    // 2. CRUD khoá/mở khoá tài khoản người dùng
-    @PutMapping("/users/{id}/toggle-status")
-    public ResponseEntity<User> toggleUserStatus(@PathVariable Long id) {
+    // 2. Khoá tài khoản người dùng (PATCH)
+    @PatchMapping("/users/{id}/lock")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserResponseDTO> lockUser(@PathVariable Long id) {
         return userRepository.findById(id).map(user -> {
-            user.setIsActive(!user.getIsActive());
+            user.setIsActive(false);
             userRepository.save(user);
-            return ResponseEntity.ok(user);
+            return ResponseEntity.ok(new UserResponseDTO(user));
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    // 3. Xoá người dùng (Phần thêm cho đủ CRUD)
+    // 3. Mở khoá tài khoản người dùng (PATCH)
+    @PatchMapping("/users/{id}/unlock")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserResponseDTO> unlockUser(@PathVariable Long id) {
+        return userRepository.findById(id).map(user -> {
+            user.setIsActive(true);
+            userRepository.save(user);
+            return ResponseEntity.ok(new UserResponseDTO(user));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // 4. Xoá cứng người dùng (Xoá hẳn khỏi Database)
     @DeleteMapping("/users/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<?> deleteUser(@PathVariable Long id) {
         return userRepository.findById(id).map(user -> {
             userRepository.delete(user);
-            return ResponseEntity.noContent().<Void>build();
+            return ResponseEntity.ok("Xóa người dùng thành công!");
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    // 4. Xem thống kê tổng số task trong hệ thống của từng người dùng
+    // 5. Xem thống kê tổng số task trong hệ thống của từng người dùng
     @GetMapping("/stats/tasks")
     public List<UserStatsDTO> getUserTaskStats() {
-        List<User> users = userRepository.findAll();
-        return users.stream().map(user -> {
-            // Đếm số lượng task của user từ TaskRepository
-            // findByUserIdOrderByDueDateAsc trả về List, ta có thể lấy size()
-            long taskCount = taskRepository.findByUserIdOrderByDueDateAsc(user.getId()).size();
-            return new UserStatsDTO(user.getUsername(), taskCount);
-        }).collect(Collectors.toList());
+        return userRepository.getUserTaskStats();
+    }
+
+    // --- MỚI: FULL CRUD CHO ADMIN ---
+
+    // 6. Tạo người dùng mới (Admin có thể gán luôn Role)
+    @PostMapping("/users")
+    public ResponseEntity<?> createUser(@RequestBody AdminUserRequest request) {
+        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Username không được để trống!");
+        }
+        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+            return ResponseEntity.badRequest().body("Username đã tồn tại!");
+        }
+        if (request.getEmail() != null && userRepository.findByEmail(request.getEmail()).isPresent()) {
+            return ResponseEntity.badRequest().body("Email đã tồn tại!");
+        }
+
+        // Kiểm tra xác nhận mật khẩu
+        if (request.getPassword() != null && !request.getPassword().equals(request.getConfirmPassword())) {
+            return ResponseEntity.badRequest().body("Xác nhận mật khẩu không khớp!");
+        }
+
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+
+        // Mã hóa mật khẩu nếu có gửi lên, nếu không để mặc định 123456
+        String rawPassword = (request.getPassword() != null) ? request.getPassword() : "123456";
+        user.setPassword(passwordEncoder.encode(rawPassword));
+
+        user.setRole(request.getRole() != null ? request.getRole() : "USER");
+        user.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
+
+        User savedUser = userRepository.save(user);
+        return ResponseEntity.ok(new UserResponseDTO(savedUser));
+    }
+
+    // 7. Cập nhật thông tin bất kỳ User nào (PATCH)
+    @PatchMapping("/users/{id}")
+    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody AdminUserRequest details) {
+        return userRepository.findById(id).map(user -> {
+            if (details.getUsername() != null) {
+                user.setUsername(details.getUsername());
+            }
+            if (details.getEmail() != null) {
+                user.setEmail(details.getEmail());
+            }
+            if (details.getRole() != null) {
+                user.setRole(details.getRole());
+            }
+            if (details.getIsActive() != null) {
+                user.setIsActive(details.getIsActive());
+            }
+            // Admin cũng có thể đổi mật khẩu nếu cần
+            if (details.getPassword() != null && !details.getPassword().trim().isEmpty()) {
+                if (!details.getPassword().equals(details.getConfirmPassword())) {
+                    return ResponseEntity.badRequest().body("Xác nhận mật khẩu mới không khớp!");
+                }
+                user.setPassword(passwordEncoder.encode(details.getPassword()));
+            }
+
+            User updatedUser = userRepository.save(user);
+            return ResponseEntity.ok(new UserResponseDTO(updatedUser));
+        }).orElse(ResponseEntity.notFound().build());
     }
 }

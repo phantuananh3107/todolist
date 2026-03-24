@@ -3,10 +3,14 @@ package com.example.demo.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "User")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class User {
 
     @Id
@@ -24,7 +28,14 @@ public class User {
 
     private String role; // ADMIN hoặc USER
 
-    private Boolean isActive = true; // 🔥 thêm dòng này
+    private Boolean isActive = true;
+
+    // Mỗi lần logout sẽ tăng giá trị này lên 1.
+    // Token cũ sẽ chứa version cũ → so sánh không khớp → bị từ chối.
+    private Integer tokenVersion = 0;
 
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Tasks> tasks;
 }
