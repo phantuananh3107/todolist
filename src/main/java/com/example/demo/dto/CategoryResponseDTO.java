@@ -20,4 +20,3 @@ public class CategoryResponseDTO {
         this.taskCount = category.getTasks() != null ? (long) category.getTasks().size() : 0L;
     }
 }
-
