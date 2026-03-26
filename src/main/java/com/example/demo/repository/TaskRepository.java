@@ -17,4 +17,10 @@ public interface TaskRepository extends JpaRepository<Tasks, Long> {
 
     // Đếm số task của một user (dùng cho Admin stats, tối ưu hơn load toàn bộ list)
     long countByUserId(Long userId);
+
+    // Kiểm tra trùng tên Task trong cùng một Category
+    boolean existsByTitleAndCategoryIdAndIsActiveTrue(String title, Long categoryId);
+
+    // Lấy tất cả task active của một Category
+    List<Tasks> findByCategoryIdAndIsActiveTrue(Long categoryId);
 }

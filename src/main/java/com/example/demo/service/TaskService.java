@@ -61,6 +61,11 @@ public class TaskService {
             if (!category.getUser().getId().equals(userId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Bạn không có quyền dùng nhóm này!");
             }
+
+            // Kiểm tra trùng tên task trong cùng category
+            if (taskRepository.existsByTitleAndCategoryIdAndIsActiveTrue(request.getTitle().trim(), request.getCategoryId())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Tiêu đề công việc đã tồn tại trong nhóm này!");
+            }
         }
 
         // Create task
@@ -154,6 +159,17 @@ public class TaskService {
 
         // Update fields
         if (request.getTitle() != null && !request.getTitle().trim().isEmpty()) {
+            // Nếu update category hoặc title, cần kiểm tra trùng tên
+            Long checkCategoryId = request.getCategoryId() != null ? request.getCategoryId() : (task.getCategory() != null ? task.getCategory().getId() : null);
+            
+            if (checkCategoryId != null) {
+                // Kiểm tra trùng tên task trong category (nếu title mới khác title cũ)
+                if (!task.getTitle().equals(request.getTitle().trim())) {
+                    if (taskRepository.existsByTitleAndCategoryIdAndIsActiveTrue(request.getTitle().trim(), checkCategoryId)) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Tiêu đề công việc đã tồn tại trong nhóm này!");
+                    }
+                }
+            }
             task.setTitle(request.getTitle());
         }
 

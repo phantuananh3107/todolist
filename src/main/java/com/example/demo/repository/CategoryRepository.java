@@ -9,4 +9,7 @@ import java.util.List;
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     List<Category> findByUserId(Long userId);
+
+    // Kiểm tra trùng tên Category cho một User
+    boolean existsByNameAndUserIdAndIsActiveTrue(String name, Long userId);
 }

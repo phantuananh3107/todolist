@@ -3,8 +3,10 @@ package com.example.demo.service;
 import com.example.demo.dto.CategoryResponseDTO;
 import com.example.demo.dto.CreateCategoryRequest;
 import com.example.demo.entity.Category;
+import com.example.demo.entity.Tasks;
 import com.example.demo.entity.User;
 import com.example.demo.repository.CategoryRepository;
+import com.example.demo.repository.TaskRepository;
 import com.example.demo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -24,6 +26,9 @@ public class CategoryService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private TaskRepository taskRepository;
+
     /**
      * Tạo nhóm công việc mới
      */
@@ -40,6 +45,11 @@ public class CategoryService {
         }
 
         User user = userOpt.get();
+
+        // Kiểm tra trùng tên Category cho user này
+        if (categoryRepository.existsByNameAndUserIdAndIsActiveTrue(request.getName().trim(), userId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Tên nhóm đã tồn tại!");
+        }
 
         // Create category
         Category category = new Category();
@@ -109,6 +119,13 @@ public class CategoryService {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Bạn không có quyền sửa nhóm này!");
         }
 
+        // Kiểm tra trùng tên Category (nếu tên mới khác tên cũ)
+        if (!category.getName().equals(request.getName().trim())) {
+            if (categoryRepository.existsByNameAndUserIdAndIsActiveTrue(request.getName().trim(), userId)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Tên nhóm đã tồn tại!");
+            }
+        }
+
         category.setName(request.getName());
         Category updated = categoryRepository.save(category);
 
@@ -131,9 +148,16 @@ public class CategoryService {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Bạn không có quyền xóa nhóm này!");
         }
 
-        // Soft delete
+        // Soft delete category
         category.setIsActive(false);
         categoryRepository.save(category);
+
+        // Cascade soft delete: xóa tất cả task active của category này
+        List<Tasks> activeTasks = taskRepository.findByCategoryIdAndIsActiveTrue(categoryId);
+        for (Tasks task : activeTasks) {
+            task.setIsActive(false);
+            taskRepository.save(task);
+        }
 
         return ResponseEntity.ok("Xóa nhóm thành công!");
     }
