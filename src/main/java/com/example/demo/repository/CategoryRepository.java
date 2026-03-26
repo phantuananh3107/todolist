@@ -16,4 +16,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     // Kiểm tra trùng tên Category cho một User
     boolean existsByNameAndUserIdAndIsActiveTrue(String name, Long userId);
+
+    // Tìm kiếm Category theo tên (ignore case)
+    List<Category> findByNameContainingIgnoreCaseAndUserIdAndIsActiveTrue(String name, Long userId);
 }

@@ -176,5 +176,22 @@ public class CategoryService {
 
         return ResponseEntity.ok("Xóa nhóm thành công!");
     }
+
+    /**
+     * Tìm kiếm nhóm theo tên
+     */
+    public ResponseEntity<?> searchCategories(String keyword, Long userId) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Người dùng không tồn tại!");
+        }
+
+        List<Category> categories = categoryRepository.findByNameContainingIgnoreCaseAndUserIdAndIsActiveTrue(keyword, userId);
+        List<CategoryResponseDTO> result = categories.stream()
+                .map(CategoryResponseDTO::new)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
 }
 

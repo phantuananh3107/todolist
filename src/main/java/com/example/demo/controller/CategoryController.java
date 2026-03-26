@@ -67,5 +67,15 @@ public class CategoryController {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         return categoryService.deleteCategory(id, Long.parseLong(userId));
     }
+
+    /**
+     * Tìm kiếm nhóm theo tên
+     * GET /api/categories/search?keyword=...
+     */
+    @GetMapping("/search")
+    public ResponseEntity<?> searchCategories(@RequestParam String keyword) {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return categoryService.searchCategories(keyword, Long.parseLong(userId));
+    }
 }
 

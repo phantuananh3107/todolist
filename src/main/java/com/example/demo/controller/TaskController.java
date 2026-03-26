@@ -118,5 +118,18 @@ public class TaskController {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         return taskService.getTasksByCategory(Long.parseLong(userId), categoryId);
     }
+
+    /**
+     * Tìm kiếm công việc với filter (keyword, priority, status)
+     * GET /api/tasks/advanced-search?keyword=...&priority=HIGH&status=TODO
+     */
+    @GetMapping("/advanced-search")
+    public ResponseEntity<?> advancedSearchTasks(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String priority,
+            @RequestParam(required = false) String status) {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return taskService.searchTasksWithFilters(keyword, priority, status, Long.parseLong(userId));
+    }
 }
 
