@@ -38,6 +38,7 @@ public class AdminController {
         List<User> users = userRepository.findAll();
         List<UserResponseDTO> result = users.stream()
                 .filter(u -> !u.getId().toString().equals(currentUserId)) // Lọc bỏ chính mình
+                .filter(u -> !u.getIsDeleted()) // Lọc bỏ user đã bị xoá mềm
                 .map(UserResponseDTO::new)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(result);
@@ -60,6 +61,18 @@ public class AdminController {
     public ResponseEntity<UserResponseDTO> unlockUser(@PathVariable Long id) {
         return userRepository.findById(id).map(user -> {
             user.setIsActive(true);
+            userRepository.save(user);
+            return ResponseEntity.ok(new UserResponseDTO(user));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // 3.5 Xoá mềm người dùng (PATCH)
+    @PatchMapping("/users/{id}/soft-delete")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserResponseDTO> softDeleteUser(@PathVariable Long id) {
+        return userRepository.findById(id).map(user -> {
+            user.setIsDeleted(true);
+            user.setIsActive(false); // Khi xoá mềm thì cũng khoá luôn
             userRepository.save(user);
             return ResponseEntity.ok(new UserResponseDTO(user));
         }).orElse(ResponseEntity.notFound().build());

@@ -72,6 +72,9 @@ public class UserController {
             // liệu cũ)
             if (passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())
                     || loginRequest.getPassword().equals(user.getPassword())) {
+                if (Boolean.TRUE.equals(user.getIsDeleted())) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Tài khoản này đã bị xoá!");
+                }
                 if (Boolean.FALSE.equals(user.getIsActive())) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Tài khoản đã bị khoá!");
                 }

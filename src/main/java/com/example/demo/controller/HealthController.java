@@ -51,7 +51,7 @@ public class HealthController {
         response.put("status", "UP");
         response.put("message", "Backend is running!");
         response.put("timestamp", LocalDateTime.now());
-        response.put("server", "http://localhost:9090");
+        response.put("server", "http://localhost:8080");
         return ResponseEntity.ok(response);
     }
 }

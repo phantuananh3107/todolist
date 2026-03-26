@@ -9,6 +9,7 @@ public record UserResponseDTO(
         String email,
         String role,
         Boolean isActive,
+        Boolean isDeleted,
         LocalDateTime createdAt
 ) {
     public UserResponseDTO(User user) {
@@ -18,6 +19,7 @@ public record UserResponseDTO(
              user.getEmail(), 
              user.getRole(), 
              user.getIsActive(), 
+             user.getIsDeleted(),
              user.getCreatedAt()
         );
     }

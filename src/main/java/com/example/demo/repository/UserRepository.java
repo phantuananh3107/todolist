@@ -16,8 +16,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
 
     // Tối ưu API đếm task bằng cách đếm thẳng từ database (tránh N+1 Query)
-    @Query("SELECT new com.example.demo.dto.UserStatsDTO(u.username, COUNT(t.id)) " +
+    @Query("SELECT new com.example.demo.dto.UserStatsDTO(u.username, COUNT(t.id), " +
+           "SUM(CASE WHEN t.status = com.example.demo.entity.Tasks$Status.DONE THEN 1L ELSE 0L END), " +
+           "SUM(CASE WHEN t.status != com.example.demo.entity.Tasks$Status.DONE AND t.id IS NOT NULL THEN 1L ELSE 0L END)) " +
            "FROM User u LEFT JOIN Tasks t ON t.user.id = u.id " +
+           "WHERE u.isDeleted = false " +
            "GROUP BY u.username")
     List<UserStatsDTO> getUserTaskStats();
 }
