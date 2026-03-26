@@ -7,6 +7,9 @@ import com.example.demo.entity.User;
 import com.example.demo.repository.TaskRepository;
 import com.example.demo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -14,7 +17,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -33,14 +35,22 @@ public class AdminController {
     // 1. Xem danh sách người dùng (ẩn password trước khi trả về)
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
+    public ResponseEntity<Page<UserResponseDTO>> getAllUsers(
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit
+    ) {
         String currentUserId = SecurityContextHolder.getContext().getAuthentication().getName();
-        List<User> users = userRepository.findAll();
-        List<UserResponseDTO> result = users.stream()
-                .filter(u -> !u.getId().toString().equals(currentUserId)) // Lọc bỏ chính mình
-                .filter(u -> !u.getIsDeleted()) // Lọc bỏ user đã bị xoá mềm
-                .map(UserResponseDTO::new)
-                .collect(Collectors.toList());
+        Long adminId = Long.parseLong(currentUserId);
+        
+        // Spring Pageable tính từ 0, nên page 1 -> index 0
+        Pageable pageable = PageRequest.of(page - 1, limit);
+        
+        Page<User> userPage = userRepository.searchUsers(keyword, adminId, pageable);
+        
+        // Chuyển đổi Page<User> sang Page<UserResponseDTO>
+        Page<UserResponseDTO> result = userPage.map(UserResponseDTO::new);
+        
         return ResponseEntity.ok(result);
     }
 

@@ -61,6 +61,11 @@ public class TaskService {
             if (!category.getUser().getId().equals(userId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Bạn không có quyền dùng nhóm này!");
             }
+
+            // Kiểm tra trùng tên task trong cùng category
+            if (taskRepository.existsByTitleAndCategoryIdAndIsActiveTrue(request.getTitle().trim(), request.getCategoryId())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Tiêu đề công việc đã tồn tại trong nhóm này!");
+            }
         }
 
         // Create task
@@ -100,7 +105,7 @@ public class TaskService {
     }
 
     /**
-     * Lấy danh sách công việc của user
+     * Lấy danh sách công việc active của user
      */
     public ResponseEntity<?> getTasksByUserId(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
@@ -108,9 +113,9 @@ public class TaskService {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Người dùng không tồn tại!");
         }
 
-        List<Tasks> tasks = taskRepository.findByUserIdOrderByDueDateAsc(userId);
+        // Lấy chỉ tasks active từ database
+        List<Tasks> tasks = taskRepository.findByUserIdAndIsActiveTrueOrderByDueDateAsc(userId);
         List<TaskResponseDTO> result = tasks.stream()
-                .filter(Tasks::getIsActive)  // Chỉ lấy task active
                 .map(TaskResponseDTO::new)
                 .collect(Collectors.toList());
 
@@ -154,6 +159,17 @@ public class TaskService {
 
         // Update fields
         if (request.getTitle() != null && !request.getTitle().trim().isEmpty()) {
+            // Nếu update category hoặc title, cần kiểm tra trùng tên
+            Long checkCategoryId = request.getCategoryId() != null ? request.getCategoryId() : (task.getCategory() != null ? task.getCategory().getId() : null);
+            
+            if (checkCategoryId != null) {
+                // Kiểm tra trùng tên task trong category (nếu title mới khác title cũ)
+                if (!task.getTitle().equals(request.getTitle().trim())) {
+                    if (taskRepository.existsByTitleAndCategoryIdAndIsActiveTrue(request.getTitle().trim(), checkCategoryId)) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Tiêu đề công việc đã tồn tại trong nhóm này!");
+                    }
+                }
+            }
             task.setTitle(request.getTitle());
         }
 
@@ -241,9 +257,9 @@ public class TaskService {
     public ResponseEntity<?> getTasksByStatus(Long userId, String status) {
         try {
             Tasks.Status statusEnum = Tasks.Status.valueOf(status.toUpperCase());
-            List<Tasks> tasks = taskRepository.findByUserIdOrderByDueDateAsc(userId);
+            List<Tasks> tasks = taskRepository.findByUserIdAndIsActiveTrueOrderByDueDateAsc(userId);
             List<TaskResponseDTO> result = tasks.stream()
-                    .filter(t -> t.getStatus() == statusEnum && t.getIsActive())
+                    .filter(t -> t.getStatus() == statusEnum)
                     .map(TaskResponseDTO::new)
                     .collect(Collectors.toList());
             return ResponseEntity.ok(result);
@@ -258,9 +274,9 @@ public class TaskService {
     public ResponseEntity<?> getTasksByPriority(Long userId, String priority) {
         try {
             Tasks.Priority priorityEnum = Tasks.Priority.valueOf(priority.toUpperCase());
-            List<Tasks> tasks = taskRepository.findByUserIdOrderByDueDateAsc(userId);
+            List<Tasks> tasks = taskRepository.findByUserIdAndIsActiveTrueOrderByDueDateAsc(userId);
             List<TaskResponseDTO> result = tasks.stream()
-                    .filter(t -> t.getPriority() == priorityEnum && t.getIsActive())
+                    .filter(t -> t.getPriority() == priorityEnum)
                     .map(TaskResponseDTO::new)
                     .collect(Collectors.toList());
             return ResponseEntity.ok(result);
@@ -273,11 +289,10 @@ public class TaskService {
      * Lấy công việc quá hạn
      */
     public ResponseEntity<?> getOverdueTasks(Long userId) {
-        List<Tasks> tasks = taskRepository.findByUserIdOrderByDueDateAsc(userId);
+        List<Tasks> tasks = taskRepository.findByUserIdAndIsActiveTrueOrderByDueDateAsc(userId);
         LocalDateTime now = LocalDateTime.now();
         List<TaskResponseDTO> result = tasks.stream()
-                .filter(t -> t.getIsActive() && 
-                           t.getDueDate() != null && 
+                .filter(t -> t.getDueDate() != null && 
                            t.getDueDate().isBefore(now) &&
                            t.getStatus() != Tasks.Status.DONE)
                 .map(TaskResponseDTO::new)
@@ -302,8 +317,9 @@ public class TaskService {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Bạn không có quyền xem nhóm này!");
         }
 
-        List<TaskResponseDTO> result = category.getTasks().stream()
-                .filter(Tasks::getIsActive)
+        // Lấy task từ repository thay vì entity relationship để tránh lazy loading issues
+        List<Tasks> tasks = taskRepository.findByCategoryIdAndIsActiveTrue(categoryId);
+        List<TaskResponseDTO> result = tasks.stream()
                 .map(TaskResponseDTO::new)
                 .collect(Collectors.toList());
 
