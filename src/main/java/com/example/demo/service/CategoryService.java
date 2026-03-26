@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.CategoryResponseDTO;
+import com.example.demo.dto.TaskResponseDTO;
 import com.example.demo.dto.CreateCategoryRequest;
 import com.example.demo.entity.Category;
 import com.example.demo.entity.Tasks;
@@ -63,7 +64,7 @@ public class CategoryService {
     }
 
     /**
-     * Lấy danh sách nhóm của user
+     * Lấy danh sách nhóm active của user
      */
     public ResponseEntity<?> getCategoriesByUserId(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
@@ -71,9 +72,9 @@ public class CategoryService {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Người dùng không tồn tại!");
         }
 
-        List<Category> categories = categoryRepository.findByUserId(userId);
+        // Lấy chỉ categories active từ database
+        List<Category> categories = categoryRepository.findByUserIdAndIsActiveTrue(userId);
         List<CategoryResponseDTO> result = categories.stream()
-                .filter(Category::getIsActive)  // Chỉ lấy category active
                 .map(CategoryResponseDTO::new)
                 .collect(Collectors.toList());
 
@@ -81,7 +82,7 @@ public class CategoryService {
     }
 
     /**
-     * Lấy chi tiết một nhóm
+     * Lấy chi tiết một nhóm (bao gồm danh sách tasks trong nhóm)
      */
     public ResponseEntity<?> getCategoryById(Long categoryId, Long userId) {
         Optional<Category> categoryOpt = categoryRepository.findById(categoryId);
@@ -96,7 +97,21 @@ public class CategoryService {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Bạn không có quyền xem nhóm này!");
         }
 
-        return ResponseEntity.ok(new CategoryResponseDTO(category));
+        // Lấy danh sách tasks từ repository thay vì entity relationship
+        List<Tasks> tasks = taskRepository.findByCategoryIdAndIsActiveTrue(categoryId);
+        List<TaskResponseDTO> taskDTOs = tasks.stream()
+                .map(TaskResponseDTO::new)
+                .collect(Collectors.toList());
+
+        // Build response DTO
+        var response = new java.util.LinkedHashMap<>();
+        response.put("id", category.getId());
+        response.put("name", category.getName());
+        response.put("isActive", category.getIsActive());
+        response.put("tasks", taskDTOs);
+        response.put("taskCount", (long) taskDTOs.size());
+
+        return ResponseEntity.ok(response);
     }
 
     /**

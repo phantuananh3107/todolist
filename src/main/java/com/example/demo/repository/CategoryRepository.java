@@ -8,6 +8,10 @@ import java.util.List;
 
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, Long> {
+    // Lấy danh sách categories active của user
+    List<Category> findByUserIdAndIsActiveTrue(Long userId);
+
+    // Lấy categories của user (không filter active)
     List<Category> findByUserId(Long userId);
 
     // Kiểm tra trùng tên Category cho một User

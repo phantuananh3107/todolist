@@ -11,11 +11,16 @@ public interface TaskRepository extends JpaRepository<Tasks, Long> {
     // Tìm kiếm task theo tiêu đề (Phục vụ chức năng Search của Tuấn Anh)
     List<Tasks> findByTitleContainingIgnoreCase(String title);
 
-    // Lấy danh sách task của một user cụ thể và sắp xếp theo ngày (Sort)
-    // Tasks entity dùng @ManyToOne User user, nên Spring Data JPA sẽ join qua user.id
+    // Lấy danh sách task active của một user cụ thể và sắp xếp theo ngày (Sort)
+    List<Tasks> findByUserIdAndIsActiveTrueOrderByDueDateAsc(Long userId);
+
+    // Lấy danh sách task của user (không filter active)
     List<Tasks> findByUserIdOrderByDueDateAsc(Long userId);
 
-    // Đếm số task của một user (dùng cho Admin stats, tối ưu hơn load toàn bộ list)
+    // Đếm số task active của một user
+    long countByUserIdAndIsActiveTrue(Long userId);
+
+    // Đếm số task của một user (không filter active)
     long countByUserId(Long userId);
 
     // Kiểm tra trùng tên Task trong cùng một Category
