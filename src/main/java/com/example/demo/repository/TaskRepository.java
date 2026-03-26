@@ -28,4 +28,13 @@ public interface TaskRepository extends JpaRepository<Tasks, Long> {
 
     // Lấy tất cả task active của một Category
     List<Tasks> findByCategoryIdAndIsActiveTrue(Long categoryId);
+
+    // Tìm kiếm task theo tiêu đề cho user cụ thể
+    List<Tasks> findByTitleContainingIgnoreCaseAndUserIdAndIsActiveTrue(String title, Long userId);
+
+    // Tìm task theo priority và user
+    List<Tasks> findByUserIdAndIsActiveTrueAndPriority(Long userId, String priority);
+
+    // Tìm task theo status và user
+    List<Tasks> findByUserIdAndIsActiveTrueAndStatus(Long userId, String status);
 }
