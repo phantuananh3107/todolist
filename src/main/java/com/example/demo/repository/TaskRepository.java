@@ -28,4 +28,7 @@ public interface TaskRepository extends JpaRepository<Tasks, Long> {
 
     // Lấy tất cả task active của một Category
     List<Tasks> findByCategoryIdAndIsActiveTrue(Long categoryId);
+
+    // Lấy danh sách task theo trạng thái (Dùng cho AI)
+    List<Tasks> findByUserIdAndStatusAndIsActiveTrue(Long userId, Tasks.Status status);
 }

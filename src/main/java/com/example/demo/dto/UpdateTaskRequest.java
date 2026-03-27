@@ -1,5 +1,7 @@
 package com.example.demo.dto;
 
+import com.example.demo.entity.Tasks.Priority;
+import com.example.demo.entity.Tasks.Status;
 import lombok.*;
 import java.time.LocalDateTime;
 
@@ -10,8 +12,8 @@ import java.time.LocalDateTime;
 public class UpdateTaskRequest {
     private String title;
     private String description;
-    private String priority;           // LOW, MEDIUM, HIGH
-    private String status;             // TODO, DOING, DONE, OVERDUE
+    private Priority priority;         // LOW, MEDIUM, HIGH
+    private Status status;             // TODO, DOING, DONE, OVERDUE
     private LocalDateTime dueDate;
     private Long categoryId;
 }

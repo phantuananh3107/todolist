@@ -19,7 +19,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
 
     // Tìm kiếm người dùng theo username hoặc email (có phân trang và lọc xoá mềm)
-    @Query("SELECT u FROM User u WHERE u.isDeleted = false AND u.id <> :adminId AND " +
+    @Query("SELECT u FROM User u WHERE (u.isDeleted IS NULL OR u.isDeleted = false) AND u.id <> :adminId AND " +
            "(:keyword IS NULL OR :keyword = '' OR " +
            "LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
            "LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')))")
@@ -27,10 +27,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // Tối ưu API đếm task bằng cách đếm thẳng từ database (tránh N+1 Query)
     @Query("SELECT new com.example.demo.dto.UserStatsDTO(u.username, COUNT(t.id), " +
-           "SUM(CASE WHEN t.status = com.example.demo.entity.Tasks$Status.DONE THEN 1L ELSE 0L END), " +
-           "SUM(CASE WHEN t.status != com.example.demo.entity.Tasks$Status.DONE AND t.id IS NOT NULL THEN 1L ELSE 0L END)) " +
+           "SUM(CASE WHEN t.status = com.example.demo.entity.Tasks.Status.DONE THEN 1L ELSE 0L END), " +
+           "SUM(CASE WHEN t.status != com.example.demo.entity.Tasks.Status.DONE AND t.id IS NOT NULL THEN 1L ELSE 0L END)) " +
            "FROM User u LEFT JOIN Tasks t ON t.user.id = u.id " +
-           "WHERE u.isDeleted = false " +
+           "WHERE (u.isDeleted IS NULL OR u.isDeleted = false) " +
            "GROUP BY u.username")
     List<UserStatsDTO> getUserTaskStats();
 }

@@ -118,5 +118,15 @@ public class TaskController {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         return taskService.getTasksByCategory(Long.parseLong(userId), categoryId);
     }
+
+    /**
+     * Lấy danh sách công việc được AI gợi ý sắp xếp
+     * GET /api/tasks/ai-suggested-order
+     */
+    @GetMapping("/ai-suggested-order")
+    public ResponseEntity<?> getAISuggestedOrder() {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return taskService.getAISuggestedOrder(Long.parseLong(userId));
+    }
 }
 

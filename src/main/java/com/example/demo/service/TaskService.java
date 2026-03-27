@@ -14,8 +14,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -30,6 +34,9 @@ public class TaskService {
 
     @Autowired
     private CategoryRepository categoryRepository;
+
+    @Autowired
+    private OpenAIService openAIService;
 
     /**
      * Tạo công việc mới
@@ -77,22 +84,14 @@ public class TaskService {
         task.setIsActive(true);
         task.setCreatedAt(LocalDateTime.now());
 
-        // Parse priority
+        // Set priority directly from Enum
         if (request.getPriority() != null) {
-            try {
-                task.setPriority(Tasks.Priority.valueOf(request.getPriority().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Ưu tiên không hợp lệ! (LOW, MEDIUM, HIGH)");
-            }
+            task.setPriority(request.getPriority());
         }
 
-        // Parse status
+        // Set status directly from Enum
         if (request.getStatus() != null) {
-            try {
-                task.setStatus(Tasks.Status.valueOf(request.getStatus().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Trạng thái không hợp lệ! (TODO, DOING, DONE, OVERDUE)");
-            }
+            task.setStatus(request.getStatus());
         } else {
             task.setStatus(Tasks.Status.TODO); // Default
         }
@@ -178,19 +177,11 @@ public class TaskService {
         }
 
         if (request.getPriority() != null) {
-            try {
-                task.setPriority(Tasks.Priority.valueOf(request.getPriority().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Ưu tiên không hợp lệ!");
-            }
+            task.setPriority(request.getPriority());
         }
 
         if (request.getStatus() != null) {
-            try {
-                task.setStatus(Tasks.Status.valueOf(request.getStatus().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Trạng thái không hợp lệ!");
-            }
+            task.setStatus(request.getStatus());
         }
 
         if (request.getDueDate() != null) {
@@ -324,6 +315,86 @@ public class TaskService {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Lấy danh sách công việc được sắp xếp bởi AI (Gợi ý bởi AI)
+     */
+    public ResponseEntity<?> getAISuggestedOrder(Long userId) {
+        // 1. Lấy tasks active (TODO, DOING, OVERDUE)
+        List<Tasks> allActive = taskRepository.findByUserIdAndIsActiveTrueOrderByDueDateAsc(userId);
+        List<Tasks> activeTasks = allActive.stream()
+                .filter(t -> t.getStatus() != Tasks.Status.DONE)
+                .collect(Collectors.toList());
+
+        if (activeTasks.isEmpty()) {
+            return ResponseEntity.ok(new ArrayList<>());
+        }
+
+        // 2. Lấy một số tasks hoàn thành để làm lịch sử (Context)
+        List<Tasks> doneTasks = taskRepository.findByUserIdAndStatusAndIsActiveTrue(userId, Tasks.Status.DONE);
+        List<Tasks> history = doneTasks.stream().limit(10).collect(Collectors.toList());
+
+        // 3. Xây dựng prompt cho AI
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Dựa trên mức độ ưu tiên (HIGH > MEDIUM > LOW), thời hạn (due date) và lịch sử hoàn thành, hãy sắp xếp danh sách công việc sau đây theo thứ tự nên thực hiện từ trên xuống dưới:\n\n");
+        
+        for (Tasks t : activeTasks) {
+            prompt.append(String.format("- ID: %d | Tiêu đề: %s | Ưu tiên: %s | Hạn: %s | Trạng thái: %s\n",
+                    t.getId(), t.getTitle(), t.getPriority(), t.getDueDate(), t.getStatus()));
+        }
+
+        if (!history.isEmpty()) {
+            prompt.append("\nLịch sử các công việc đã hoàn thành gần đây:\n");
+            for (Tasks t : history) {
+                prompt.append(String.format("- %s (Ưu tiên: %s)\n", t.getTitle(), t.getPriority()));
+            }
+        }
+
+        prompt.append("\nYêu cầu quan trọng: CHỈ TRẢ VỀ một mảng JSON chứa các ID của công việc đã sắp xếp (ví dụ: [102, 105, 101]). Không giải thích, không thêm văn bản gì khác.");
+
+        // 4. Gọi OpenAI API qua OpenAIService
+        String aiResponse = openAIService.getResponseFromAI(prompt.toString());
+        
+        if (aiResponse == null || aiResponse.startsWith("Lỗi")) {
+            // Fallback nếu AI lỗi
+            return ResponseEntity.ok(activeTasks.stream().map(TaskResponseDTO::new).collect(Collectors.toList()));
+        }
+
+        try {
+            // Làm sạch response (loại bỏ markdown nếu có)
+            String jsonPart = aiResponse.replaceAll("```json|```", "").trim();
+            
+            ObjectMapper mapper = new ObjectMapper();
+            List<Long> orderedIds = mapper.readValue(jsonPart, new TypeReference<List<Long>>() {});
+            
+            // 5. Sắp xếp lại danh sách dựa trên thứ tự IDs từ AI
+            Map<Long, Tasks> taskMap = activeTasks.stream().collect(Collectors.toMap(Tasks::getId, t -> t));
+            List<Tasks> sortedTasks = new ArrayList<>();
+            
+            for (Object idObj : orderedIds) {
+                Long id = Long.valueOf(idObj.toString());
+                if (taskMap.containsKey(id)) {
+                    sortedTasks.add(taskMap.get(id));
+                    taskMap.remove(id);
+                }
+            }
+            
+            // Thêm các task còn sót lại mà AI có thể đã quên
+            sortedTasks.addAll(taskMap.values());
+
+            List<TaskResponseDTO> result = sortedTasks.stream()
+                    .map(TaskResponseDTO::new)
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            // Fallback: Trả về danh sách mặc định nếu parse JSON thất bại
+            List<TaskResponseDTO> result = activeTasks.stream()
+                    .map(TaskResponseDTO::new)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(result);
+        }
     }
 }
 

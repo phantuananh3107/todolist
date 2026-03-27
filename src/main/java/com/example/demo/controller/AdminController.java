@@ -1,7 +1,6 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.AdminUserRequest;
-import com.example.demo.dto.UserStatsDTO;
 import com.example.demo.dto.UserResponseDTO;
 import com.example.demo.entity.User;
 import com.example.demo.repository.TaskRepository;
@@ -97,10 +96,17 @@ public class AdminController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    // 5. Xem thống kê tổng số task trong hệ thống của từng người dùng
+    // 5. Xem thống kê chi tiết (gồm Category và Task) của từng người dùng
     @GetMapping("/stats/tasks")
-    public List<UserStatsDTO> getUserTaskStats() {
-        return userRepository.getUserTaskStats();
+    public List<UserResponseDTO> getUserTaskStats() {
+        // Lấy tất cả user chưa xoá (ngoại trừ chính mình nếu cần, nhưng thường stats thì lấy hết)
+        List<User> users = userRepository.findAll().stream()
+                .filter(u -> u.getIsDeleted() == null || !u.getIsDeleted())
+                .toList();
+        
+        return users.stream()
+                .map(UserResponseDTO::new)
+                .toList();
     }
 
     // --- MỚI: FULL CRUD CHO ADMIN ---
