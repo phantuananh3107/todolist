@@ -120,6 +120,7 @@ public class TaskController {
     }
 
     /**
+<<<<<<< HEAD
      * Lấy danh sách công việc được AI gợi ý sắp xếp
      * GET /api/tasks/ai-suggested-order
      */
@@ -127,6 +128,18 @@ public class TaskController {
     public ResponseEntity<?> getAISuggestedOrder() {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         return taskService.getAISuggestedOrder(Long.parseLong(userId));
+=======
+     * Tìm kiếm công việc với filter (keyword, priority, status)
+     * GET /api/tasks/advanced-search?keyword=...&priority=HIGH&status=TODO
+     */
+    @GetMapping("/advanced-search")
+    public ResponseEntity<?> advancedSearchTasks(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String priority,
+            @RequestParam(required = false) String status) {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return taskService.searchTasksWithFilters(keyword, priority, status, Long.parseLong(userId));
+>>>>>>> 38b23146d715514a1fefd696e7f004f8dab0f5fb
     }
 }
 

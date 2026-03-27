@@ -243,6 +243,50 @@ public class TaskService {
     }
 
     /**
+     * Tìm kiếm công việc với các tùy chọn filter (priority, status)
+     */
+    public ResponseEntity<?> searchTasksWithFilters(String keyword, String priority, String status, Long userId) {
+        List<Tasks> tasks = taskRepository.findByUserIdAndIsActiveTrueOrderByDueDateAsc(userId);
+
+        // Filter theo keyword nếu có (chỉ search theo title)
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            tasks = tasks.stream()
+                    .filter(t -> t.getTitle().toLowerCase().contains(keyword.toLowerCase()))
+                    .collect(Collectors.toList());
+        }
+
+        // Filter theo priority nếu có
+        if (priority != null && !priority.trim().isEmpty()) {
+            try {
+                Tasks.Priority priorityEnum = Tasks.Priority.valueOf(priority.toUpperCase());
+                tasks = tasks.stream()
+                        .filter(t -> t.getPriority() == priorityEnum)
+                        .collect(Collectors.toList());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Ưu tiên không hợp lệ! (LOW, MEDIUM, HIGH)");
+            }
+        }
+
+        // Filter theo status nếu có
+        if (status != null && !status.trim().isEmpty()) {
+            try {
+                Tasks.Status statusEnum = Tasks.Status.valueOf(status.toUpperCase());
+                tasks = tasks.stream()
+                        .filter(t -> t.getStatus() == statusEnum)
+                        .collect(Collectors.toList());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Trạng thái không hợp lệ! (TODO, DOING, DONE, OVERDUE)");
+            }
+        }
+
+        List<TaskResponseDTO> result = tasks.stream()
+                .map(TaskResponseDTO::new)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
      * Lấy công việc theo trạng thái
      */
     public ResponseEntity<?> getTasksByStatus(Long userId, String status) {
