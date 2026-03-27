@@ -1,0 +1,81 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------------< com.example:demo >--------------------------
+[INFO] Building demo 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ demo ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ demo ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 41 source files with javac [debug parameters release 17] to target\classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[131,1] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[131,3] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[131,5] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[131,7] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[132,6] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[132,11] ';' expected
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[132,21] ';' expected
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[132,30] ';' expected
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[133,47] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[133,38] not a statement
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[134,7] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[136,5] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[135,36] ';' expected
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[142,1] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[142,4] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[142,7] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[142,11] ';' expected
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[142,49] ';' expected
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/repository/TaskRepository.java:[32,1] illegal start of type
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/repository/TaskRepository.java:[32,13] > expected
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/repository/TaskRepository.java:[35,1] illegal start of type
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/repository/TaskRepository.java:[44,1] illegal start of type
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/repository/TaskRepository.java:[44,49] <identifier> expected
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/repository/TaskRepository.java:[45,1] = expected
+[INFO] 24 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.529 s
+[INFO] Finished at: 2026-03-27T15:22:14+07:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.1:compile (default-compile) on project demo: Compilation failure: Compilation failure: 
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[131,1] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[131,3] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[131,5] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[131,7] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[132,6] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[132,11] ';' expected
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[132,21] ';' expected
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[132,30] ';' expected
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[133,47] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[133,38] not a statement
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[134,7] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[136,5] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[135,36] ';' expected
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[142,1] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[142,4] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[142,7] illegal start of expression
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[142,11] ';' expected
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/controller/TaskController.java:[142,49] ';' expected
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/repository/TaskRepository.java:[32,1] illegal start of type
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/repository/TaskRepository.java:[32,13] > expected
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/repository/TaskRepository.java:[35,1] illegal start of type
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/repository/TaskRepository.java:[44,1] illegal start of type
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/repository/TaskRepository.java:[44,49] <identifier> expected
+[ERROR] /D:/MON HOC/KI 2 - 4/PHAT TRIEN UNG DUNG CHO CAC THIET BI DI DONG/todolist/src/main/java/com/example/demo/repository/TaskRepository.java:[45,1] = expected
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
