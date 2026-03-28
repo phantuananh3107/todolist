@@ -2,7 +2,6 @@ package com.example.demo.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
@@ -40,7 +39,18 @@ public class HealthController {
             "GET /api/tasks/filter/status?status=... - Filter by status (need token)",
             "GET /api/tasks/filter/priority?priority=... - Filter by priority (need token)",
             "GET /api/tasks/overdue - Get overdue tasks (need token)",
-            "GET /api/tasks/by-category/{id} - Get tasks by category (need token)"
+            "GET /api/tasks/by-category/{id} - Get tasks by category (need token)",
+            "GET /api/tasks/by-date?date=YYYY-MM-DD - Get tasks by due date (need token)",
+            "GET /api/tasks/calendar?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD - Calendar view (need token)",
+            "GET /api/tasks/calendar/month?year=YYYY&month=M - Calendar month view (need token)",
+            "POST /api/reminders - Create reminder for a task (need token)",
+            "PATCH /api/reminders/{id} - Update reminder time (need token)",
+            "DELETE /api/reminders/{id} - Delete reminder (need token)",
+            "GET /api/reminders/upcoming?minutes=30 - Upcoming reminders (need token)",
+            "GET /api/reminders/by-date?date=YYYY-MM-DD - Reminders by day (need token)",
+            "GET /api/notifications/unread - Unread in-app notifications (need token)",
+            "GET /api/notifications - All in-app notifications (need token)",
+            "PATCH /api/notifications/{id}/read - Mark notification as read (need token)"
         });
         return ResponseEntity.ok(response);
     }
