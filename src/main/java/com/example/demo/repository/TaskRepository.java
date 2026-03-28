@@ -1,10 +1,13 @@
 package com.example.demo.repository;
 
-import com.example.demo.entity.Tasks;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import com.example.demo.entity.Tasks;
 
 @Repository
 public interface TaskRepository extends JpaRepository<Tasks, Long> {
@@ -37,4 +40,17 @@ public interface TaskRepository extends JpaRepository<Tasks, Long> {
 
     // Tìm task theo status và user
     List<Tasks> findByUserIdAndIsActiveTrueAndStatus(Long userId, String status);
+
+    // Lấy task theo khoảng thời gian dueDate (nửa mở: start <= dueDate < end)
+    @Query("""
+        select t
+        from Tasks t
+        where t.user.id = :userId
+          and t.isActive = true
+          and t.dueDate is not null
+          and t.dueDate >= :start
+          and t.dueDate < :end
+        order by t.dueDate asc
+    """)
+    List<Tasks> findActiveTasksByUserIdDueDateRange(Long userId, LocalDateTime start, LocalDateTime end);
 }
