@@ -4,6 +4,8 @@ import com.example.demo.dto.CreateTaskRequest;
 import com.example.demo.dto.TaskResponseDTO;
 import com.example.demo.dto.UpdateTaskRequest;
 import com.example.demo.entity.Category;
+import com.example.demo.entity.Priority;
+import com.example.demo.entity.Status;
 import com.example.demo.entity.Tasks;
 import com.example.demo.entity.User;
 import com.example.demo.repository.CategoryRepository;
@@ -93,7 +95,7 @@ public class TaskService {
         if (request.getStatus() != null) {
             task.setStatus(request.getStatus());
         } else {
-            task.setStatus(Tasks.Status.TODO); // Default
+            task.setStatus(Status.TODO); // Default
         }
 
         task.setDueDate(request.getDueDate());
@@ -258,7 +260,7 @@ public class TaskService {
         // Filter theo priority nếu có
         if (priority != null && !priority.trim().isEmpty()) {
             try {
-                Tasks.Priority priorityEnum = Tasks.Priority.valueOf(priority.toUpperCase());
+                Priority priorityEnum = Priority.valueOf(priority.toUpperCase());
                 tasks = tasks.stream()
                         .filter(t -> t.getPriority() == priorityEnum)
                         .collect(Collectors.toList());
@@ -270,7 +272,7 @@ public class TaskService {
         // Filter theo status nếu có
         if (status != null && !status.trim().isEmpty()) {
             try {
-                Tasks.Status statusEnum = Tasks.Status.valueOf(status.toUpperCase());
+                Status statusEnum = Status.valueOf(status.toUpperCase());
                 tasks = tasks.stream()
                         .filter(t -> t.getStatus() == statusEnum)
                         .collect(Collectors.toList());
@@ -291,7 +293,7 @@ public class TaskService {
      */
     public ResponseEntity<?> getTasksByStatus(Long userId, String status) {
         try {
-            Tasks.Status statusEnum = Tasks.Status.valueOf(status.toUpperCase());
+            Status statusEnum = Status.valueOf(status.toUpperCase());
             List<Tasks> tasks = taskRepository.findByUserIdAndIsActiveTrueOrderByDueDateAsc(userId);
             List<TaskResponseDTO> result = tasks.stream()
                     .filter(t -> t.getStatus() == statusEnum)
@@ -308,7 +310,7 @@ public class TaskService {
      */
     public ResponseEntity<?> getTasksByPriority(Long userId, String priority) {
         try {
-            Tasks.Priority priorityEnum = Tasks.Priority.valueOf(priority.toUpperCase());
+            Priority priorityEnum = Priority.valueOf(priority.toUpperCase());
             List<Tasks> tasks = taskRepository.findByUserIdAndIsActiveTrueOrderByDueDateAsc(userId);
             List<TaskResponseDTO> result = tasks.stream()
                     .filter(t -> t.getPriority() == priorityEnum)
@@ -329,7 +331,7 @@ public class TaskService {
         List<TaskResponseDTO> result = tasks.stream()
                 .filter(t -> t.getDueDate() != null && 
                            t.getDueDate().isBefore(now) &&
-                           t.getStatus() != Tasks.Status.DONE)
+                           t.getStatus() != Status.DONE)
                 .map(TaskResponseDTO::new)
                 .collect(Collectors.toList());
 
@@ -368,7 +370,7 @@ public class TaskService {
         // 1. Lấy tasks active (TODO, DOING, OVERDUE)
         List<Tasks> allActive = taskRepository.findByUserIdAndIsActiveTrueOrderByDueDateAsc(userId);
         List<Tasks> activeTasks = allActive.stream()
-                .filter(t -> t.getStatus() != Tasks.Status.DONE)
+                .filter(t -> t.getStatus() != Status.DONE)
                 .collect(Collectors.toList());
 
         if (activeTasks.isEmpty()) {
@@ -376,7 +378,7 @@ public class TaskService {
         }
 
         // 2. Lấy một số tasks hoàn thành để làm lịch sử (Context)
-        List<Tasks> doneTasks = taskRepository.findByUserIdAndStatusAndIsActiveTrue(userId, Tasks.Status.DONE);
+        List<Tasks> doneTasks = taskRepository.findByUserIdAndStatusAndIsActiveTrue(userId, Status.DONE);
         List<Tasks> history = doneTasks.stream().limit(10).collect(Collectors.toList());
 
         // 3. Xây dựng prompt cho AI

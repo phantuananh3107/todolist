@@ -1,5 +1,7 @@
 package com.example.demo.repository;
 
+import com.example.demo.entity.Priority;
+import com.example.demo.entity.Status;
 import com.example.demo.entity.Tasks;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -30,14 +32,14 @@ public interface TaskRepository extends JpaRepository<Tasks, Long> {
     List<Tasks> findByCategoryIdAndIsActiveTrue(Long categoryId);
 
     // Lấy danh sách task theo trạng thái (Dùng cho AI)
-    List<Tasks> findByUserIdAndStatusAndIsActiveTrue(Long userId, Tasks.Status status);
+    List<Tasks> findByUserIdAndStatusAndIsActiveTrue(Long userId, Status status);
 
     // Tìm kiếm task theo tiêu đề cho user cụ thể
     List<Tasks> findByTitleContainingIgnoreCaseAndUserIdAndIsActiveTrue(String title, Long userId);
 
     // Tìm task theo priority và user
-    List<Tasks> findByUserIdAndIsActiveTrueAndPriority(Long userId, Tasks.Priority priority);
+    List<Tasks> findByUserIdAndIsActiveTrueAndPriority(Long userId, Priority priority);
 
     // Tìm task theo status và user
-    List<Tasks> findByUserIdAndIsActiveTrueAndStatus(Long userId, Tasks.Status status);
+    List<Tasks> findByUserIdAndIsActiveTrueAndStatus(Long userId, Status status);
 }

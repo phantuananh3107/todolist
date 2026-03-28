@@ -1,7 +1,7 @@
 package com.example.demo.dto;
 
-import com.example.demo.entity.Tasks.Priority;
-import com.example.demo.entity.Tasks.Status;
+import com.example.demo.entity.Priority;
+import com.example.demo.entity.Status;
 import lombok.*;
 import java.time.LocalDateTime;
 

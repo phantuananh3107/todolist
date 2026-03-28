@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.dto.AdminUserRequest;
 import com.example.demo.dto.UserResponseDTO;
 import com.example.demo.entity.User;
+import com.example.demo.repository.CategoryRepository;
 import com.example.demo.repository.TaskRepository;
 import com.example.demo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,9 @@ public class AdminController {
     private TaskRepository taskRepository;
 
     @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     // 1. Xem danh sách người dùng (ẩn password trước khi trả về)
@@ -51,6 +55,14 @@ public class AdminController {
         Page<UserResponseDTO> result = userPage.map(UserResponseDTO::new);
         
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/users/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserResponseDTO> getUserById(@PathVariable Long id) {
+        return userRepository.findById(id)
+                .map(user -> ResponseEntity.ok(new UserResponseDTO(user)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // 2. Khoá tài khoản người dùng (PATCH)
@@ -170,6 +182,34 @@ public class AdminController {
 
             User updatedUser = userRepository.save(user);
             return ResponseEntity.ok(new UserResponseDTO(updatedUser));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // 8. Admin xoá mềm Task của user
+    @PatchMapping("/tasks/{id}/soft-delete")
+    public ResponseEntity<?> softDeleteTask(@PathVariable Long id) {
+        return taskRepository.findById(id).map(task -> {
+            task.setIsActive(false);
+            taskRepository.save(task);
+            return ResponseEntity.ok("Đã xoá mềm công việc: " + task.getTitle());
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // 9. Admin xoá mềm Category của user
+    @PatchMapping("/categories/{id}/soft-delete")
+    public ResponseEntity<?> softDeleteCategory(@PathVariable Long id) {
+        return categoryRepository.findById(id).map(category -> {
+            category.setIsActive(false);
+            categoryRepository.save(category);
+            
+            // Vô hiệu hoá tất cả task thuộc category này
+            List<com.example.demo.entity.Tasks> tasks = taskRepository.findByCategoryIdAndIsActiveTrue(id);
+            for (com.example.demo.entity.Tasks task : tasks) {
+                task.setIsActive(false);
+                taskRepository.save(task);
+            }
+            
+            return ResponseEntity.ok("Đã xoá mềm nhóm: " + category.getName() + " và các công việc liên quan.");
         }).orElse(ResponseEntity.notFound().build());
     }
 }

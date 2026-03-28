@@ -42,6 +42,4 @@ public class Tasks {
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Reminder> reminders;
 
-    public enum Priority { LOW, MEDIUM, HIGH }
-    public enum Status { TODO, DOING, DONE, OVERDUE }
-}
+}
