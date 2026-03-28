@@ -112,8 +112,8 @@ public class TaskService {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Người dùng không tồn tại!");
         }
 
-        // Lấy chỉ tasks active từ database
-        List<Tasks> tasks = taskRepository.findByUserIdAndIsActiveTrueOrderByDueDateAsc(userId);
+        // Lấy chỉ tasks active từ database - sắp xếp theo ID tăng dần
+        List<Tasks> tasks = taskRepository.findByUserIdAndIsActiveTrueOrderByIdAsc(userId);
         List<TaskResponseDTO> result = tasks.stream()
                 .map(TaskResponseDTO::new)
                 .collect(Collectors.toList());
@@ -439,6 +439,55 @@ public class TaskService {
                     .collect(Collectors.toList());
             return ResponseEntity.ok(result);
         }
+    }
+
+    /**
+     * Sắp xếp lại thứ tự ưu tiên làm task của user
+     * Endpoint: POST /api/tasks/reorder
+     * 
+     * Request: {
+     *   "tasks": [
+     *     {"taskId": 3, "orderIndex": 1},
+     *     {"taskId": 1, "orderIndex": 2},
+     *     {"taskId": 2, "orderIndex": 3}
+     *   ]
+     * }
+     */
+    public ResponseEntity<?> reorderTasks(Long userId, com.example.demo.dto.ReorderTaskRequest request) {
+        // Validate
+        if (request.getTasks() == null || request.getTasks().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Danh sách task không được để trống!");
+        }
+
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Người dùng không tồn tại!");
+        }
+
+        // Update orderIndex cho từng task
+        for (com.example.demo.dto.ReorderTaskRequest.TaskOrderItem item : request.getTasks()) {
+            Tasks task = taskRepository.findByIdAndUserId(item.getTaskId(), userId);
+            
+            // IDOR check: Chỉ user sở hữu task mới được sắp xếp
+            if (task == null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("Công việc với ID " + item.getTaskId() + " không tồn tại hoặc không thuộc về bạn!");
+            }
+
+            task.setOrderIndex(item.getOrderIndex());
+            taskRepository.save(task);
+        }
+
+        // Trả về danh sách task đã sắp xếp theo orderIndex (chế độ reorder)
+        List<Tasks> reorderedTasks = taskRepository.findByUserIdAndIsActiveTrueOrderByOrderIndexAscIdAsc(userId);
+        List<TaskResponseDTO> result = reorderedTasks.stream()
+                .map(TaskResponseDTO::new)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Sắp xếp công việc thành công!",
+                "tasks", result
+        ));
     }
 }
 

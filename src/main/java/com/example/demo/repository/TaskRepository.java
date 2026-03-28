@@ -40,4 +40,13 @@ public interface TaskRepository extends JpaRepository<Tasks, Long> {
 
     // Tìm task theo status và user
     List<Tasks> findByUserIdAndIsActiveTrueAndStatus(Long userId, Tasks.Status status);
+
+    // Lấy danh sách task sắp xếp theo orderIndex (dùng cho chức năng Priority Ordering)
+    List<Tasks> findByUserIdAndIsActiveTrueOrderByOrderIndexAscIdAsc(Long userId);
+
+    // Lấy danh sách task sắp xếp theo ID tăng dần (dùng cho danh sách mặc định)
+    List<Tasks> findByUserIdAndIsActiveTrueOrderByIdAsc(Long userId);
+
+    // Tìm task theo ID và user (để verify ownership)
+    Tasks findByIdAndUserId(Long id, Long userId);
 }

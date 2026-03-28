@@ -20,6 +20,7 @@ public class TaskResponseDTO {
     private String categoryName;
     private Long categoryId;
     private String username;          // Người tạo task
+    private Integer orderIndex;       // Thứ tự ưu tiên làm task
 
     public TaskResponseDTO(Tasks task) {
         this.id = task.getId();
@@ -33,6 +34,7 @@ public class TaskResponseDTO {
         this.categoryName = task.getCategory() != null ? task.getCategory().getName() : null;
         this.categoryId = task.getCategory() != null ? task.getCategory().getId() : null;
         this.username = task.getUser() != null ? task.getUser().getUsername() : null;
+        this.orderIndex = task.getOrderIndex();
     }
 }
 
