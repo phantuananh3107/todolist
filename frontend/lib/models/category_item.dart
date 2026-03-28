@@ -6,10 +6,17 @@ class CategoryItem {
   final int taskCount;
 
   factory CategoryItem.fromJson(Map<String, dynamic> json) {
+    // parse an toàn, tránh crash nếu backend trả kiểu khác
+    final rawId = json['id'];
+    final id = rawId is int ? rawId : int.tryParse(rawId.toString()) ?? 0;
+
+    final rawCount = json['taskCount'];
+    final taskCount = rawCount is int ? rawCount : int.tryParse((rawCount ?? '0').toString()) ?? 0;
+
     return CategoryItem(
-      id: json['id'] as int,
-      name: (json['name'] ?? 'General') as String,
-      taskCount: (json['taskCount'] ?? 0) as int,
+      id: id,
+      name: (json['name'] ?? 'General').toString(),
+      taskCount: taskCount,
     );
   }
 }

@@ -8,6 +8,7 @@ class TaskItem {
     required this.category,
     required this.dueDate,
     required this.isCompleted,
+    this.categoryId,
   });
 
   final int id;
@@ -18,17 +19,40 @@ class TaskItem {
   final String category;
   final DateTime dueDate;
   final bool isCompleted;
+  final int? categoryId;
 
   factory TaskItem.fromJson(Map<String, dynamic> json) {
+    // parse id an toàn — backend có thể trả int, num, hoặc string
+    final rawId = json['id'];
+    final id = rawId is int ? rawId : int.tryParse(rawId.toString()) ?? 0;
+
+    // category có thể là categoryName (string) hoặc category object
+    String categoryName = 'General';
+    int? categoryId;
+
+    if (json['categoryName'] != null) {
+      categoryName = json['categoryName'].toString();
+    }
+    if (json['category'] is Map) {
+      categoryName = (json['category']['name'] ?? categoryName).toString();
+      final catId = json['category']['id'];
+      categoryId = catId is int ? catId : int.tryParse(catId.toString());
+    }
+    if (json['categoryId'] != null) {
+      final catId = json['categoryId'];
+      categoryId = catId is int ? catId : int.tryParse(catId.toString());
+    }
+
     return TaskItem(
-      id: json['id'] as int,
-      title: (json['title'] ?? '') as String,
-      description: (json['description'] ?? '') as String,
-      priority: (json['priority'] ?? 'MEDIUM') as String,
-      status: (json['status'] ?? 'TODO') as String,
-      category: (json['categoryName'] ?? 'General') as String,
+      id: id,
+      title: (json['title'] ?? '').toString(),
+      description: (json['description'] ?? '').toString(),
+      priority: (json['priority'] ?? 'MEDIUM').toString(),
+      status: (json['status'] ?? 'TODO').toString(),
+      category: categoryName,
+      categoryId: categoryId,
       dueDate: DateTime.tryParse((json['dueDate'] ?? '').toString()) ?? DateTime.now(),
-      isCompleted: (json['status'] ?? '') == 'DONE',
+      isCompleted: (json['status'] ?? '').toString() == 'DONE',
     );
   }
 }

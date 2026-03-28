@@ -12,6 +12,7 @@ class ApiService {
   static const String baseUrl = 'http://10.0.2.2:9090';
   static const String _tokenKey = 'access_token';
   static const String _emailKey = 'email';
+  static const String _usernameKey = 'username';
 
   static Future<void> saveAuth(String token, String email) async {
     final prefs = await SharedPreferences.getInstance();
@@ -23,11 +24,27 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     await prefs.remove(_emailKey);
+    await prefs.remove(_usernameKey);
   }
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_tokenKey);
+  }
+
+  static Future<String?> getEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_emailKey);
+  }
+
+  static Future<String?> getUsername() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_usernameKey);
+  }
+
+  static Future<void> saveUsername(String username) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_usernameKey, username);
   }
 
   static Future<Map<String, String>> _headers() async {
@@ -64,29 +81,21 @@ class ApiService {
   }
 
   static Future<List<TaskItem>> fetchTasks() async {
-    try {
-      final response = await http.get(Uri.parse('$baseUrl/api/tasks'), headers: await _headers());
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final data = jsonDecode(response.body) as List<dynamic>;
-        return data.map((e) => TaskItem.fromJson(e as Map<String, dynamic>)).toList();
-      }
-      throw Exception(response.body);
-    } catch (_) {
-      return demoTasks;
+    final response = await http.get(Uri.parse('$baseUrl/api/tasks'), headers: await _headers());
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = jsonDecode(response.body) as List<dynamic>;
+      return data.map((e) => TaskItem.fromJson(e as Map<String, dynamic>)).toList();
     }
+    throw Exception('Fetch tasks failed: ${response.statusCode}');
   }
 
   static Future<List<CategoryItem>> fetchCategories() async {
-    try {
-      final response = await http.get(Uri.parse('$baseUrl/api/categories'), headers: await _headers());
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final data = jsonDecode(response.body) as List<dynamic>;
-        return data.map((e) => CategoryItem.fromJson(e as Map<String, dynamic>)).toList();
-      }
-      throw Exception(response.body);
-    } catch (_) {
-      return demoCategories;
+    final response = await http.get(Uri.parse('$baseUrl/api/categories'), headers: await _headers());
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = jsonDecode(response.body) as List<dynamic>;
+      return data.map((e) => CategoryItem.fromJson(e as Map<String, dynamic>)).toList();
     }
+    throw Exception('Fetch categories failed: ${response.statusCode}');
   }
 
   static Future<void> createTask(Map<String, dynamic> payload) async {
@@ -127,6 +136,7 @@ final List<TaskItem> demoTasks = [
     priority: 'HIGH',
     status: 'DOING',
     category: 'Work',
+    categoryId: 3,
     dueDate: DateTime.now().add(const Duration(days: 1)),
     isCompleted: false,
   ),
@@ -137,6 +147,7 @@ final List<TaskItem> demoTasks = [
     priority: 'MEDIUM',
     status: 'TODO',
     category: 'Study',
+    categoryId: 2,
     dueDate: DateTime.now().add(const Duration(days: 2)),
     isCompleted: false,
   ),
@@ -147,7 +158,8 @@ final List<TaskItem> demoTasks = [
     priority: 'HIGH',
     status: 'TODO',
     category: 'Study',
-    dueDate: DateTime.now().add(const Duration(hours: 8)),
+    categoryId: 2,
+    dueDate: DateTime.now(),
     isCompleted: false,
   ),
   TaskItem(
@@ -157,6 +169,7 @@ final List<TaskItem> demoTasks = [
     priority: 'LOW',
     status: 'DONE',
     category: 'Personal',
+    categoryId: 4,
     dueDate: DateTime.now(),
     isCompleted: true,
   ),
