@@ -18,11 +18,13 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 import java.util.stream.Collectors;
 
 @Service
@@ -490,6 +492,61 @@ public class TaskService {
                 "message", "Sắp xếp công việc thành công!",
                 "tasks", result
         ));
+    }
+
+    /**
+     * Lấy danh sách công việc theo 1 ngày (theo dueDate)
+     */
+    public ResponseEntity<?> getTasksByDate(Long userId, LocalDate date) {
+        if (date == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("date không hợp lệ!");
+        }
+
+        LocalDateTime start = date.atStartOfDay();
+        LocalDateTime end = date.plusDays(1).atStartOfDay(); // nửa mở: start <= dueDate < end
+
+        List<Tasks> tasks = taskRepository.findActiveTasksByUserIdDueDateRange(userId, start, end);
+        List<TaskResponseDTO> result = tasks.stream()
+                .map(TaskResponseDTO::new)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Calendar view: trả về task theo từng ngày trong khoảng [startDate, endDate]
+     */
+    public ResponseEntity<?> getTasksCalendar(Long userId, LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("startDate/endDate không hợp lệ!");
+        }
+        if (endDate.isBefore(startDate)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("endDate phải >= startDate!");
+        }
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.plusDays(1).atStartOfDay(); // nửa mở
+
+        List<Tasks> tasks = taskRepository.findActiveTasksByUserIdDueDateRange(userId, start, end);
+
+        Map<LocalDate, List<Tasks>> grouped = tasks.stream()
+                .filter(t -> t.getDueDate() != null)
+                .collect(Collectors.groupingBy(t -> t.getDueDate().toLocalDate()));
+
+        List<com.example.demo.dto.TaskCalendarDayDTO> days = Stream.iterate(startDate, d -> !d.isAfter(endDate), d -> d.plusDays(1))
+                .map(d -> {
+                    List<TaskResponseDTO> dayTasks = grouped.getOrDefault(d, List.of())
+                            .stream()
+                            .map(TaskResponseDTO::new)
+                            .collect(Collectors.toList());
+                    return new com.example.demo.dto.TaskCalendarDayDTO(d, dayTasks);
+                })
+                .collect(Collectors.toList());
+
+        com.example.demo.dto.TaskCalendarResponseDTO response =
+                new com.example.demo.dto.TaskCalendarResponseDTO(startDate, endDate, days);
+
+        return ResponseEntity.ok(response);
     }
 }
 

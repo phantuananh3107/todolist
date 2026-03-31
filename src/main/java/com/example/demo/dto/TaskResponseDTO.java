@@ -1,8 +1,11 @@
 package com.example.demo.dto;
 
+import com.example.demo.entity.Reminder;
 import com.example.demo.entity.Tasks;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
 
 @Getter
 @Setter
@@ -21,6 +24,7 @@ public class TaskResponseDTO {
     private Long categoryId;
     private String username;          // Người tạo task
     private Integer orderIndex;       // Thứ tự ưu tiên làm task
+    private List<LocalDateTime> reminderTimes; // Thời gian nhắc cho task (nếu có)
 
     public TaskResponseDTO(Tasks task) {
         this.id = task.getId();
@@ -35,6 +39,12 @@ public class TaskResponseDTO {
         this.categoryId = task.getCategory() != null ? task.getCategory().getId() : null;
         this.username = task.getUser() != null ? task.getUser().getUsername() : null;
         this.orderIndex = task.getOrderIndex();
+        this.reminderTimes = task.getReminders() == null ? null
+                : task.getReminders().stream()
+                .map(Reminder::getRemindTime)
+                .filter(t -> t != null)
+                .sorted(Comparator.naturalOrder())
+                .toList();
     }
 }
 
