@@ -24,7 +24,7 @@ public class HealthController {
             "GET /api/health - Health check",
             "POST /api/users/register - Register new user",
             "POST /api/users/login - Login",
-            "GET /api/users/profile/{id} - Get profile (need token)",
+            "GET /api/users/profile - Get profile (need token)",
             "PATCH /api/users/profile/{id} - Update profile (need token)",
             "PATCH /api/users/change-password/{id} - Change password (need token)",
             "POST /api/users/logout - Logout (need token)",
