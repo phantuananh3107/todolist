@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.CreateTaskRequest;
+import com.example.demo.dto.ReorderTaskRequest;
 import com.example.demo.dto.UpdateTaskRequest;
 import com.example.demo.service.TaskService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -140,6 +141,24 @@ public class TaskController {
             @RequestParam(required = false) String status) {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         return taskService.searchTasksWithFilters(keyword, priority, status, Long.parseLong(userId));
+    }
+
+    /**
+     * Sắp xếp lại thứ tự ưu tiên làm task
+     * POST /api/tasks/reorder
+     * 
+     * Request body: {
+     *   "tasks": [
+     *     {"taskId": 3, "orderIndex": 1},
+     *     {"taskId": 1, "orderIndex": 2},
+     *     {"taskId": 2, "orderIndex": 3}
+     *   ]
+     * }
+     */
+    @PostMapping("/reorder")
+    public ResponseEntity<?> reorderTasks(@RequestBody ReorderTaskRequest request) {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return taskService.reorderTasks(Long.parseLong(userId), request);
     }
 }
 
