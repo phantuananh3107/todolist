@@ -178,6 +178,44 @@ public class CategoryService {
     }
 
     /**
+     * Khôi phục nhóm đã bị xoá
+     */
+    public ResponseEntity<?> restoreCategory(Long categoryId, Long userId) {
+        Optional<Category> categoryOpt = categoryRepository.findById(categoryId);
+        if (categoryOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Nhóm không tồn tại!");
+        }
+
+        Category category = categoryOpt.get();
+
+        // IDOR check
+        if (!category.getUser().getId().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Bạn không có quyền khôi phục nhóm này!");
+        }
+
+        if (Boolean.TRUE.equals(category.getIsActive())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Nhóm này hiện đang hoạt động!");
+        }
+
+        // Kiểm tra xem có một category khác cùng tên đang active không
+        if (categoryRepository.existsByNameAndUserIdAndIsActiveTrue(category.getName(), userId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Tên nhóm này (" + category.getName() + ") đã được sử dụng bởi một nhóm khác đang hoạt động. Vui lòng đổi tên hoặc xoá nhóm hiện có trước khi khôi phục nhóm này!");
+        }
+
+        category.setIsActive(true);
+        categoryRepository.save(category);
+
+        // Cascade restore: Khôi phục toàn bộ các công việc thuộc nhóm này
+        List<Tasks> tasksInGroup = taskRepository.findByCategoryId(categoryId);
+        for (Tasks task : tasksInGroup) {
+            task.setIsActive(true);
+            taskRepository.save(task);
+        }
+
+        return ResponseEntity.ok(new CategoryResponseDTO(category));
+    }
+
+    /**
      * Tìm kiếm nhóm theo tên
      */
     public ResponseEntity<?> searchCategories(String keyword, Long userId) {

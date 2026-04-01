@@ -41,19 +41,18 @@ public class AdminController {
     public ResponseEntity<Page<UserResponseDTO>> getAllUsers(
             @RequestParam(defaultValue = "") String keyword,
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int limit
-    ) {
+            @RequestParam(defaultValue = "10") int limit) {
         String currentUserId = SecurityContextHolder.getContext().getAuthentication().getName();
         Long adminId = Long.parseLong(currentUserId);
-        
+
         // Spring Pageable tính từ 0, nên page 1 -> index 0
         Pageable pageable = PageRequest.of(page - 1, limit);
-        
+
         Page<User> userPage = userRepository.searchUsers(keyword, adminId, pageable);
-        
+
         // Chuyển đổi Page<User> sang Page<UserResponseDTO>
         Page<UserResponseDTO> result = userPage.map(UserResponseDTO::new);
-        
+
         return ResponseEntity.ok(result);
     }
 
@@ -111,11 +110,12 @@ public class AdminController {
     // 5. Xem thống kê chi tiết (gồm Category và Task) của từng người dùng
     @GetMapping("/stats/tasks")
     public List<UserResponseDTO> getUserTaskStats() {
-        // Lấy tất cả user chưa xoá (ngoại trừ chính mình nếu cần, nhưng thường stats thì lấy hết)
+        // Lấy tất cả user chưa xoá (ngoại trừ chính mình nếu cần, nhưng thường stats
+        // thì lấy hết)
         List<User> users = userRepository.findAll().stream()
                 .filter(u -> u.getIsDeleted() == null || !u.getIsDeleted())
                 .toList();
-        
+
         return users.stream()
                 .map(UserResponseDTO::new)
                 .toList();
@@ -201,14 +201,14 @@ public class AdminController {
         return categoryRepository.findById(id).map(category -> {
             category.setIsActive(false);
             categoryRepository.save(category);
-            
+
             // Vô hiệu hoá tất cả task thuộc category này
             List<com.example.demo.entity.Tasks> tasks = taskRepository.findByCategoryIdAndIsActiveTrue(id);
             for (com.example.demo.entity.Tasks task : tasks) {
                 task.setIsActive(false);
                 taskRepository.save(task);
             }
-            
+
             return ResponseEntity.ok("Đã xoá mềm nhóm: " + category.getName() + " và các công việc liên quan.");
         }).orElse(ResponseEntity.notFound().build());
     }

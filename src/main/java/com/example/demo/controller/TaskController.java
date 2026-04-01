@@ -24,7 +24,7 @@ import com.example.demo.service.TaskService;
 
 @RestController
 @RequestMapping("/api/tasks")
-@PreAuthorize("isAuthenticated()")  // Yêu cầu đăng nhập
+@PreAuthorize("isAuthenticated()") // Yêu cầu đăng nhập
 public class TaskController {
 
     @Autowired
@@ -183,11 +183,11 @@ public class TaskController {
      * POST /api/tasks/reorder
      * 
      * Request body: {
-     *   "tasks": [
-     *     {"taskId": 3, "orderIndex": 1},
-     *     {"taskId": 1, "orderIndex": 2},
-     *     {"taskId": 2, "orderIndex": 3}
-     *   ]
+     * "tasks": [
+     * {"taskId": 3, "orderIndex": 1},
+     * {"taskId": 1, "orderIndex": 2},
+     * {"taskId": 2, "orderIndex": 3}
+     * ]
      * }
      */
     @PostMapping("/reorder")
@@ -196,4 +196,3 @@ public class TaskController {
         return taskService.reorderTasks(Long.parseLong(userId), request);
     }
 }
-

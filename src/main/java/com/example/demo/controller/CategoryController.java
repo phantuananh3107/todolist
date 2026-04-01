@@ -77,5 +77,15 @@ public class CategoryController {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         return categoryService.searchCategories(keyword, Long.parseLong(userId));
     }
+
+    /**
+     * Khôi phục nhóm đã bị xoá
+     * PATCH /api/categories/{id}/restore
+     */
+    @PatchMapping("/{id}/restore")
+    public ResponseEntity<?> restoreCategory(@PathVariable Long id) {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return categoryService.restoreCategory(id, Long.parseLong(userId));
+    }
 }
 
