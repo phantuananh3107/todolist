@@ -1,14 +1,14 @@
 package com.example.demo.repository;
 
-import com.example.demo.entity.Priority;
-import com.example.demo.entity.Status;
-import com.example.demo.entity.Tasks;
 import java.time.LocalDateTime;
 import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import com.example.demo.entity.Priority;
+import com.example.demo.entity.Status;
 import com.example.demo.entity.Tasks;
 
 @Repository
@@ -70,4 +70,5 @@ public interface TaskRepository extends JpaRepository<Tasks, Long> {
         order by t.dueDate asc
     """)
     List<Tasks> findActiveTasksByUserIdDueDateRange(Long userId, LocalDateTime start, LocalDateTime end);
+
 }
