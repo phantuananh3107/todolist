@@ -126,6 +126,40 @@ class ApiService {
       throw Exception(response.body);
     }
   }
+
+  static Future<Map<String, dynamic>> createCategory(String name) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/categories'),
+      headers: await _headers(),
+      body: jsonEncode({'name': name}),
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    throw Exception(response.body);
+  }
+
+  static Future<void> deleteCategory(int id) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/categories/$id'),
+      headers: await _headers(),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(response.body);
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateCategory(int id, String name) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/categories/$id'),
+      headers: await _headers(),
+      body: jsonEncode({'name': name}),
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    throw Exception(response.body);
+  }
 }
 
 final List<TaskItem> demoTasks = [

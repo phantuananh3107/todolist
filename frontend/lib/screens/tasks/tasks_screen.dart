@@ -5,6 +5,7 @@ import '../../models/task_item.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/task_card.dart';
+import 'manage_categories_screen.dart';
 import 'task_form_screen.dart';
 
 class TasksScreen extends StatefulWidget {
@@ -163,6 +164,119 @@ class _TasksScreenState extends State<TasksScreen> {
     setState(() => _sortDateAsc = !_sortDateAsc);
   }
 
+  void _showFilterDialog() {
+    String? tempPriority = _priorityFilter;
+    String? tempStatus = _statusFilter;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Filter Tasks'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Priority', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 12),
+                ..._buildFilterOptions(
+                  options: ['HIGH', 'MEDIUM', 'LOW'],
+                  selected: tempPriority,
+                  onSelect: (value) => setDialogState(() => tempPriority = value),
+                ),
+                const SizedBox(height: 20),
+                const Text('Status', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 12),
+                ..._buildFilterOptions(
+                  options: ['TODO', 'DOING', 'DONE'],
+                  selected: tempStatus,
+                  onSelect: (value) => setDialogState(() => tempStatus = value),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                this.setState(() {
+                  _priorityFilter = null;
+                  _statusFilter = null;
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('Reset'),
+            ),
+            TextButton(
+              onPressed: () {
+                this.setState(() {
+                  _priorityFilter = tempPriority;
+                  _statusFilter = tempStatus;
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('Apply Filter'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildFilterOptions({
+    required List<String> options,
+    required String? selected,
+    required Function(String?) onSelect,
+  }) {
+    return [
+      GestureDetector(
+        onTap: () => onSelect(null),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              Radio<String?>(
+                value: null,
+                groupValue: selected,
+                onChanged: onSelect,
+              ),
+              const Text('All'),
+            ],
+          ),
+        ),
+      ),
+      ...options.map((option) {
+        return GestureDetector(
+          onTap: () => onSelect(option),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Radio<String>(
+                  value: option,
+                  groupValue: selected,
+                  onChanged: (value) => onSelect(value),
+                ),
+                Text(option),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    ];
+  }
+
+  void _openManageCategories() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ManageCategoriesScreen()),
+    ).then((_) => _load()); // reload categories khi quay về
+  }
+
   @override
   Widget build(BuildContext context) {
     final pending = filteredTasks.where((e) => !e.isCompleted).toList();
@@ -212,49 +326,80 @@ class _TasksScreenState extends State<TasksScreen> {
                                 },
                                 icon: const Icon(Icons.close),
                               )
-                            : const Icon(Icons.tune_rounded),
+                            : null,
                       ),
                     ),
                     const SizedBox(height: 18),
-                    // thanh chọn category
-                    SizedBox(
-                      height: 42,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemBuilder: (_, i) {
-                          final label = categories[i].name;
-                          final selected = selectedCategory == label;
-                          return GestureDetector(
-                            onTap: () =>
-                                setState(() => selectedCategory = label),
-                            child: Column(
-                              children: [
-                                Text(
-                                  label,
-                                  style: TextStyle(
-                                    fontWeight: selected
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                    color: selected
-                                        ? AppColors.primary
-                                        : AppColors.subText,
+                    // thanh chọn category + button thêm mới + filter icon
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 42,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemBuilder: (_, i) {
+                                final label = categories[i].name;
+                                final selected = selectedCategory == label;
+                                return GestureDetector(
+                                  onTap: () =>
+                                      setState(() => selectedCategory = label),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        label,
+                                        style: TextStyle(
+                                          fontWeight: selected
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
+                                          color: selected
+                                              ? AppColors.primary
+                                              : AppColors.subText,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      AnimatedContainer(
+                                        duration: const Duration(milliseconds: 200),
+                                        width: selected ? 22 : 0,
+                                        height: 2,
+                                        color: AppColors.primary,
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                const SizedBox(height: 8),
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  width: selected ? 22 : 0,
-                                  height: 2,
-                                  color: AppColors.primary,
-                                ),
-                              ],
+                                );
+                              },
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(width: 24),
+                              itemCount: categories.length,
                             ),
-                          );
-                        },
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(width: 24),
-                        itemCount: categories.length,
-                      ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: _openManageCategories,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Icon(
+                              Icons.add,
+                              color: Colors.black,
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: _showFilterDialog,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Icon(
+                              Icons.tune,
+                              color: Colors.black,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 18),
                     // filter pills - bấm vào xoay vòng giá trị
