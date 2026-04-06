@@ -98,6 +98,29 @@ class ApiService {
     throw Exception('Fetch categories failed: ${response.statusCode}');
   }
 
+  /// Gợi ý category dựa vào description
+  static Future<Map<String, dynamic>?> suggestCategory({required String description}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/categories/suggest'),
+        headers: await _headers(),
+        body: jsonEncode({'description': description}),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final suggestions = data['suggestions'] as List<dynamic>?;
+
+        if (suggestions != null && suggestions.isNotEmpty) {
+          return suggestions.first as Map<String, dynamic>;
+        }
+      }
+    } catch (e) {
+      print('Suggest category error: $e');
+    }
+    return null;
+  }
+
   static Future<void> createTask(Map<String, dynamic> payload) async {
     final response = await http.post(
       Uri.parse('$baseUrl/api/tasks'),

@@ -25,6 +25,10 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   List<CategoryItem> _categories = [];
   int? _selectedCategoryId;
 
+  // AI Suggestion
+  Map<String, dynamic>? _suggestion;
+  bool _suggestingCategory = false;
+
   @override
   void initState() {
     super.initState();
@@ -32,11 +36,41 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         TextEditingController(text: widget.existingTask?.title ?? '');
     descriptionController =
         TextEditingController(text: widget.existingTask?.description ?? '');
+    descriptionController.addListener(_onDescriptionChanged);
     priority = widget.existingTask?.priority ?? 'MEDIUM';
     status = widget.existingTask?.status ?? 'TODO';
     selectedDate =
         widget.existingTask?.dueDate ?? DateTime.now().add(const Duration(days: 1));
     _loadCategories();
+  }
+
+  /// Gợi ý category khi user nhập description (debounced)
+  Future<void> _onDescriptionChanged() async {
+    final desc = descriptionController.text.trim();
+
+    // Reset suggestion nếu description rỗng
+    if (desc.isEmpty) {
+      setState(() => _suggestion = null);
+      return;
+    }
+
+    // Gợi ý sau 1s không nhập
+    Future.delayed(const Duration(seconds: 1), () async {
+      if (!mounted || descriptionController.text.trim() != desc) return;
+
+      setState(() => _suggestingCategory = true);
+      try {
+        final suggestion = await ApiService.suggestCategory(description: desc);
+        if (!mounted) return;
+        setState(() {
+          _suggestion = suggestion;
+          _suggestingCategory = false;
+        });
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _suggestingCategory = false);
+      }
+    });
   }
 
   Future<void> _loadCategories() async {
@@ -156,6 +190,14 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   }
 
   @override
+  void dispose() {
+    titleController.dispose();
+    descriptionController.removeListener(_onDescriptionChanged);
+    descriptionController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isEdit = widget.existingTask != null;
 
@@ -184,6 +226,80 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
             decoration: const InputDecoration(labelText: 'Description'),
           ),
           const SizedBox(height: 20),
+          // AI Suggestion Box
+          if (_suggestingCategory)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.lightbulb_outline, color: Colors.blue[600], size: 20),
+                  const SizedBox(width: 8),
+                  const Expanded(child: Text('Đang phân tích...', style: TextStyle(fontSize: 13))),
+                ],
+              ),
+            )
+          else if (_suggestion != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red[200]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.lightbulb_outline, color: Colors.red[600], size: 20),
+                      const SizedBox(width: 8),
+                      const Text('AI SUGGESTION',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Colors.red),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Suggested Category: ${_suggestion?['categoryName'] ?? 'N/A'}',
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${(_suggestion?['matchPercentage'] as num?)?.toStringAsFixed(0) ?? '0'}% Match',
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
+                      ),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _selectedCategoryId = _suggestion?['categoryId'] as int?;
+                            _suggestion = null;
+                          });
+                        },
+                        child: const Text('Apply', style: TextStyle(fontSize: 12)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          if (_suggestion != null) const SizedBox(height: 20),
           const Text('Category',
               style: TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
