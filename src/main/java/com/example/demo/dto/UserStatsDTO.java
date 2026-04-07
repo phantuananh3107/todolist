@@ -6,4 +6,6 @@ import lombok.*;
 public class UserStatsDTO {
     private String username;
     private Long totalTasks;
+    private Long completedTasks;
+    private Long pendingTasks;
 }

@@ -48,9 +48,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
                     // Nếu version trong token KHÁC version trong DB → token đã bị logout
                     if (tokenVersionInJwt == null || tokenVersionInJwt != currentVersion) {
+/*
                         System.out.println("DEBUG: Token VERSION MISMATCH for user " + userId
                                 + " — JWT version: " + tokenVersionInJwt
                                 + ", DB version: " + currentVersion + " → Rejected 401");
+                        */
                         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                         response.setContentType("application/json;charset=UTF-8");
                         response.getWriter().write("{\"error\": \"Token đã bị vô hiệu hóa. Vui lòng đăng nhập lại!\"}");
@@ -62,8 +64,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         role = role.toUpperCase();
                     }
 
+/*
                     System.out.println("DEBUG: Authenticated UserId: " + userId + ", Role: " + role
                             + ", TokenVersion: " + tokenVersionInJwt);
+                    */
 
                     UsernamePasswordAuthenticationToken auth =
                             new UsernamePasswordAuthenticationToken(

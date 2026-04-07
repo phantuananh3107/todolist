@@ -15,11 +15,30 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 public class CategoryService {
+
+    private String normalizeColorHex(String rawColorHex) {
+        if (rawColorHex == null || rawColorHex.trim().isEmpty()) {
+            return null;
+        }
+
+        String normalized = rawColorHex.trim().toUpperCase(Locale.ROOT);
+        if (!normalized.startsWith("#")) {
+            normalized = "#" + normalized;
+        }
+
+        if (!normalized.matches("^#[0-9A-F]{6}$")) {
+            throw new IllegalArgumentException("Màu category không hợp lệ! Dùng định dạng #RRGGBB.");
+        }
+
+        return normalized;
+    }
+
 
     @Autowired
     private CategoryRepository categoryRepository;
@@ -52,9 +71,17 @@ public class CategoryService {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Tên nhóm đã tồn tại!");
         }
 
+        final String normalizedColorHex;
+        try {
+            normalizedColorHex = normalizeColorHex(request.getColorHex());
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+        }
+
         // Create category
         Category category = new Category();
-        category.setName(request.getName());
+        category.setName(request.getName().trim());
+        category.setColorHex(normalizedColorHex);
         category.setUser(user);
         category.setIsActive(true);
 
@@ -108,6 +135,7 @@ public class CategoryService {
         response.put("id", category.getId());
         response.put("name", category.getName());
         response.put("isActive", category.getIsActive());
+        response.put("colorHex", category.getColorHex());
         response.put("tasks", taskDTOs);
         response.put("taskCount", (long) taskDTOs.size());
 
@@ -141,7 +169,15 @@ public class CategoryService {
             }
         }
 
-        category.setName(request.getName());
+        final String normalizedColorHex;
+        try {
+            normalizedColorHex = normalizeColorHex(request.getColorHex());
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+        }
+
+        category.setName(request.getName().trim());
+        category.setColorHex(normalizedColorHex);
         Category updated = categoryRepository.save(category);
 
         return ResponseEntity.ok(new CategoryResponseDTO(updated));
@@ -175,6 +211,44 @@ public class CategoryService {
         }
 
         return ResponseEntity.ok("Xóa nhóm thành công!");
+    }
+
+    /**
+     * Khôi phục nhóm đã bị xoá
+     */
+    public ResponseEntity<?> restoreCategory(Long categoryId, Long userId) {
+        Optional<Category> categoryOpt = categoryRepository.findById(categoryId);
+        if (categoryOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Nhóm không tồn tại!");
+        }
+
+        Category category = categoryOpt.get();
+
+        // IDOR check
+        if (!category.getUser().getId().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Bạn không có quyền khôi phục nhóm này!");
+        }
+
+        if (Boolean.TRUE.equals(category.getIsActive())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Nhóm này hiện đang hoạt động!");
+        }
+
+        // Kiểm tra xem có một category khác cùng tên đang active không
+        if (categoryRepository.existsByNameAndUserIdAndIsActiveTrue(category.getName(), userId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Tên nhóm này (" + category.getName() + ") đã được sử dụng bởi một nhóm khác đang hoạt động. Vui lòng đổi tên hoặc xoá nhóm hiện có trước khi khôi phục nhóm này!");
+        }
+
+        category.setIsActive(true);
+        categoryRepository.save(category);
+
+        // Cascade restore: Khôi phục toàn bộ các công việc thuộc nhóm này
+        List<Tasks> tasksInGroup = taskRepository.findByCategoryId(categoryId);
+        for (Tasks task : tasksInGroup) {
+            task.setIsActive(true);
+            taskRepository.save(task);
+        }
+
+        return ResponseEntity.ok(new CategoryResponseDTO(category));
     }
 
     /**

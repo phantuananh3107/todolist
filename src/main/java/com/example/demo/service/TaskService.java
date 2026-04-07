@@ -2,8 +2,11 @@ package com.example.demo.service;
 
 import com.example.demo.dto.CreateTaskRequest;
 import com.example.demo.dto.TaskResponseDTO;
+import com.example.demo.dto.TaskStatsResponseDTO;
 import com.example.demo.dto.UpdateTaskRequest;
 import com.example.demo.entity.Category;
+import com.example.demo.entity.Priority;
+import com.example.demo.entity.Status;
 import com.example.demo.entity.Tasks;
 import com.example.demo.entity.User;
 import com.example.demo.repository.CategoryRepository;
@@ -14,9 +17,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,6 +40,9 @@ public class TaskService {
 
     @Autowired
     private CategoryRepository categoryRepository;
+
+    @Autowired
+    private OpenAIService openAIService;
 
     /**
      * Tạo công việc mới
@@ -77,24 +90,16 @@ public class TaskService {
         task.setIsActive(true);
         task.setCreatedAt(LocalDateTime.now());
 
-        // Parse priority
+        // Set priority directly from Enum
         if (request.getPriority() != null) {
-            try {
-                task.setPriority(Tasks.Priority.valueOf(request.getPriority().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Ưu tiên không hợp lệ! (LOW, MEDIUM, HIGH)");
-            }
+            task.setPriority(request.getPriority());
         }
 
-        // Parse status
+        // Set status directly from Enum
         if (request.getStatus() != null) {
-            try {
-                task.setStatus(Tasks.Status.valueOf(request.getStatus().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Trạng thái không hợp lệ! (TODO, DOING, DONE, OVERDUE)");
-            }
+            task.setStatus(request.getStatus());
         } else {
-            task.setStatus(Tasks.Status.TODO); // Default
+            task.setStatus(Status.TODO); // Default
         }
 
         task.setDueDate(request.getDueDate());
@@ -113,8 +118,8 @@ public class TaskService {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Người dùng không tồn tại!");
         }
 
-        // Lấy chỉ tasks active từ database
-        List<Tasks> tasks = taskRepository.findByUserIdAndIsActiveTrueOrderByDueDateAsc(userId);
+        // Lấy chỉ tasks active từ database - sắp xếp theo ID tăng dần
+        List<Tasks> tasks = taskRepository.findByUserIdAndIsActiveTrueOrderByIdAsc(userId);
         List<TaskResponseDTO> result = tasks.stream()
                 .map(TaskResponseDTO::new)
                 .collect(Collectors.toList());
@@ -178,19 +183,11 @@ public class TaskService {
         }
 
         if (request.getPriority() != null) {
-            try {
-                task.setPriority(Tasks.Priority.valueOf(request.getPriority().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Ưu tiên không hợp lệ!");
-            }
+            task.setPriority(request.getPriority());
         }
 
         if (request.getStatus() != null) {
-            try {
-                task.setStatus(Tasks.Status.valueOf(request.getStatus().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Trạng thái không hợp lệ!");
-            }
+            task.setStatus(request.getStatus());
         }
 
         if (request.getDueDate() != null) {
@@ -267,7 +264,7 @@ public class TaskService {
         // Filter theo priority nếu có
         if (priority != null && !priority.trim().isEmpty()) {
             try {
-                Tasks.Priority priorityEnum = Tasks.Priority.valueOf(priority.toUpperCase());
+                Priority priorityEnum = Priority.valueOf(priority.toUpperCase());
                 tasks = tasks.stream()
                         .filter(t -> t.getPriority() == priorityEnum)
                         .collect(Collectors.toList());
@@ -279,7 +276,7 @@ public class TaskService {
         // Filter theo status nếu có
         if (status != null && !status.trim().isEmpty()) {
             try {
-                Tasks.Status statusEnum = Tasks.Status.valueOf(status.toUpperCase());
+                Status statusEnum = Status.valueOf(status.toUpperCase());
                 tasks = tasks.stream()
                         .filter(t -> t.getStatus() == statusEnum)
                         .collect(Collectors.toList());
@@ -300,7 +297,7 @@ public class TaskService {
      */
     public ResponseEntity<?> getTasksByStatus(Long userId, String status) {
         try {
-            Tasks.Status statusEnum = Tasks.Status.valueOf(status.toUpperCase());
+            Status statusEnum = Status.valueOf(status.toUpperCase());
             List<Tasks> tasks = taskRepository.findByUserIdAndIsActiveTrueOrderByDueDateAsc(userId);
             List<TaskResponseDTO> result = tasks.stream()
                     .filter(t -> t.getStatus() == statusEnum)
@@ -317,7 +314,7 @@ public class TaskService {
      */
     public ResponseEntity<?> getTasksByPriority(Long userId, String priority) {
         try {
-            Tasks.Priority priorityEnum = Tasks.Priority.valueOf(priority.toUpperCase());
+            Priority priorityEnum = Priority.valueOf(priority.toUpperCase());
             List<Tasks> tasks = taskRepository.findByUserIdAndIsActiveTrueOrderByDueDateAsc(userId);
             List<TaskResponseDTO> result = tasks.stream()
                     .filter(t -> t.getPriority() == priorityEnum)
@@ -338,7 +335,7 @@ public class TaskService {
         List<TaskResponseDTO> result = tasks.stream()
                 .filter(t -> t.getDueDate() != null && 
                            t.getDueDate().isBefore(now) &&
-                           t.getStatus() != Tasks.Status.DONE)
+                           t.getStatus() != Status.DONE)
                 .map(TaskResponseDTO::new)
                 .collect(Collectors.toList());
 
@@ -368,6 +365,281 @@ public class TaskService {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Lấy danh sách công việc được sắp xếp bởi AI (Gợi ý bởi AI)
+     */
+    public ResponseEntity<?> getAISuggestedOrder(Long userId) {
+        // 1. Lấy tasks active (TODO, DOING, OVERDUE)
+        List<Tasks> allActive = taskRepository.findByUserIdAndIsActiveTrueOrderByDueDateAsc(userId);
+        List<Tasks> activeTasks = allActive.stream()
+                .filter(t -> t.getStatus() != Status.DONE)
+                .collect(Collectors.toList());
+
+        if (activeTasks.isEmpty()) {
+            return ResponseEntity.ok(new ArrayList<>());
+        }
+
+        // 2. Lấy một số tasks hoàn thành để làm lịch sử (Context)
+        List<Tasks> doneTasks = taskRepository.findByUserIdAndStatusAndIsActiveTrue(userId, Status.DONE);
+        List<Tasks> history = doneTasks.stream().limit(10).collect(Collectors.toList());
+
+        // 3. Xây dựng prompt cho AI
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Dựa trên mức độ ưu tiên (HIGH > MEDIUM > LOW), thời hạn (due date) và lịch sử hoàn thành, hãy sắp xếp danh sách công việc sau đây theo thứ tự nên thực hiện từ trên xuống dưới:\n\n");
+        
+        for (Tasks t : activeTasks) {
+            prompt.append(String.format("- ID: %d | Tiêu đề: %s | Ưu tiên: %s | Hạn: %s | Trạng thái: %s\n",
+                    t.getId(), t.getTitle(), t.getPriority(), t.getDueDate(), t.getStatus()));
+        }
+
+        if (!history.isEmpty()) {
+            prompt.append("\nLịch sử các công việc đã hoàn thành gần đây:\n");
+            for (Tasks t : history) {
+                prompt.append(String.format("- %s (Ưu tiên: %s)\n", t.getTitle(), t.getPriority()));
+            }
+        }
+
+        prompt.append("\nYêu cầu quan trọng: CHỈ TRẢ VỀ một mảng JSON chứa các ID của công việc đã sắp xếp (ví dụ: [102, 105, 101]). Không giải thích, không thêm văn bản gì khác.");
+
+        // 4. Gọi OpenAI API qua OpenAIService
+        String aiResponse = openAIService.getResponseFromAI(prompt.toString());
+        
+        if (aiResponse == null || aiResponse.startsWith("Lỗi")) {
+            // Fallback nếu AI lỗi
+            return ResponseEntity.ok(activeTasks.stream().map(TaskResponseDTO::new).collect(Collectors.toList()));
+        }
+
+        try {
+            // Làm sạch response (loại bỏ markdown nếu có)
+            String jsonPart = aiResponse.replaceAll("```json|```", "").trim();
+            
+            ObjectMapper mapper = new ObjectMapper();
+            List<Long> orderedIds = mapper.readValue(jsonPart, new TypeReference<List<Long>>() {});
+            
+            // 5. Sắp xếp lại danh sách dựa trên thứ tự IDs từ AI
+            Map<Long, Tasks> taskMap = activeTasks.stream().collect(Collectors.toMap(Tasks::getId, t -> t));
+            List<Tasks> sortedTasks = new ArrayList<>();
+            
+            for (Object idObj : orderedIds) {
+                Long id = Long.valueOf(idObj.toString());
+                if (taskMap.containsKey(id)) {
+                    sortedTasks.add(taskMap.get(id));
+                    taskMap.remove(id);
+                }
+            }
+            
+            // Thêm các task còn sót lại mà AI có thể đã quên
+            sortedTasks.addAll(taskMap.values());
+
+            List<TaskResponseDTO> result = sortedTasks.stream()
+                    .map(TaskResponseDTO::new)
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            // Fallback: Trả về danh sách mặc định nếu parse JSON thất bại
+            List<TaskResponseDTO> result = activeTasks.stream()
+                    .map(TaskResponseDTO::new)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(result);
+        }
+    }
+
+    /**
+     * Sắp xếp lại thứ tự ưu tiên làm task của user
+     * Endpoint: POST /api/tasks/reorder
+     * 
+     * Request: {
+     *   "tasks": [
+     *     {"taskId": 3, "orderIndex": 1},
+     *     {"taskId": 1, "orderIndex": 2},
+     *     {"taskId": 2, "orderIndex": 3}
+     *   ]
+     * }
+     */
+    public ResponseEntity<?> reorderTasks(Long userId, com.example.demo.dto.ReorderTaskRequest request) {
+        // Validate
+        if (request.getTasks() == null || request.getTasks().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Danh sách task không được để trống!");
+        }
+
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Người dùng không tồn tại!");
+        }
+
+        // Update orderIndex cho từng task
+        for (com.example.demo.dto.ReorderTaskRequest.TaskOrderItem item : request.getTasks()) {
+            Tasks task = taskRepository.findByIdAndUserId(item.getTaskId(), userId);
+            
+            // IDOR check: Chỉ user sở hữu task mới được sắp xếp
+            if (task == null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("Công việc với ID " + item.getTaskId() + " không tồn tại hoặc không thuộc về bạn!");
+            }
+
+            task.setOrderIndex(item.getOrderIndex());
+            taskRepository.save(task);
+        }
+
+        // Trả về danh sách task đã sắp xếp theo orderIndex (chế độ reorder)
+        List<Tasks> reorderedTasks = taskRepository.findByUserIdAndIsActiveTrueOrderByOrderIndexAscIdAsc(userId);
+        List<TaskResponseDTO> result = reorderedTasks.stream()
+                .map(TaskResponseDTO::new)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Sắp xếp công việc thành công!",
+                "tasks", result
+        ));
+    }
+
+    /**
+     * Thống kê task theo khoảng thời gian cho màn hình Chart.
+     * range: DAY | WEEK | MONTH
+     * basis: DUE_DATE | CREATED_AT (mặc định DUE_DATE)
+     */
+    public ResponseEntity<?> getTaskStats(Long userId, String range, String basis) {
+        String normalizedRange = (range == null || range.isBlank()) ? "WEEK" : range.trim().toUpperCase();
+        String normalizedBasis = (basis == null || basis.isBlank()) ? "DUE_DATE" : basis.trim().toUpperCase();
+
+        if (!List.of("DAY", "WEEK", "MONTH").contains(normalizedRange)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("range không hợp lệ! (DAY, WEEK, MONTH)");
+        }
+
+        if (!List.of("DUE_DATE", "CREATED_AT").contains(normalizedBasis)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("basis không hợp lệ! (DUE_DATE, CREATED_AT)");
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate startDate;
+        LocalDate endDateInclusive;
+
+        switch (normalizedRange) {
+            case "DAY" -> {
+                startDate = today;
+                endDateInclusive = today;
+            }
+            case "MONTH" -> {
+                startDate = today.withDayOfMonth(1);
+                endDateInclusive = today.withDayOfMonth(today.lengthOfMonth());
+            }
+            default -> {
+                startDate = today.with(DayOfWeek.MONDAY);
+                endDateInclusive = startDate.plusDays(6);
+            }
+        }
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime endExclusive = endDateInclusive.plusDays(1).atStartOfDay();
+        List<Tasks> tasks = "CREATED_AT".equals(normalizedBasis)
+                ? taskRepository.findActiveTasksByUserIdCreatedAtRange(userId, start, endExclusive)
+                : taskRepository.findActiveTasksByUserIdDueDateRange(userId, start, endExclusive);
+
+        LocalDateTime now = LocalDateTime.now();
+        long todo = 0;
+        long doing = 0;
+        long done = 0;
+        long overdue = 0;
+
+        for (Tasks task : tasks) {
+            Status effectiveStatus = resolveEffectiveStatus(task, now);
+            switch (effectiveStatus) {
+                case DONE -> done++;
+                case DOING -> doing++;
+                case OVERDUE -> overdue++;
+                case TODO -> todo++;
+            }
+        }
+
+        long total = tasks.size();
+        long incomplete = total - done;
+        double completionRate = total == 0 ? 0.0 : (done * 100.0) / total;
+
+        TaskStatsResponseDTO response = new TaskStatsResponseDTO(
+                normalizedRange,
+                normalizedBasis,
+                start,
+                endExclusive.minusSeconds(1),
+                total,
+                todo,
+                doing,
+                done,
+                overdue,
+                incomplete,
+                Math.round(completionRate * 100.0) / 100.0
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    private Status resolveEffectiveStatus(Tasks task, LocalDateTime now) {
+        if (task.getStatus() == Status.DONE) {
+            return Status.DONE;
+        }
+        if (task.getDueDate() != null && task.getDueDate().isBefore(now)) {
+            return Status.OVERDUE;
+        }
+        return task.getStatus() == null ? Status.TODO : task.getStatus();
+    }
+
+    /**
+     * Lấy danh sách công việc theo 1 ngày (theo dueDate)
+     */
+    public ResponseEntity<?> getTasksByDate(Long userId, LocalDate date) {
+        if (date == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("date không hợp lệ!");
+        }
+
+        LocalDateTime start = date.atStartOfDay();
+        LocalDateTime end = date.plusDays(1).atStartOfDay(); // nửa mở: start <= dueDate < end
+
+        List<Tasks> tasks = taskRepository.findActiveTasksByUserIdDueDateRange(userId, start, end);
+        List<TaskResponseDTO> result = tasks.stream()
+                .map(TaskResponseDTO::new)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Calendar view: trả về task theo từng ngày trong khoảng [startDate, endDate]
+     */
+    public ResponseEntity<?> getTasksCalendar(Long userId, LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("startDate/endDate không hợp lệ!");
+        }
+        if (endDate.isBefore(startDate)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("endDate phải >= startDate!");
+        }
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.plusDays(1).atStartOfDay(); // nửa mở
+
+        List<Tasks> tasks = taskRepository.findActiveTasksByUserIdDueDateRange(userId, start, end);
+
+        Map<LocalDate, List<Tasks>> grouped = tasks.stream()
+                .filter(t -> t.getDueDate() != null)
+                .collect(Collectors.groupingBy(t -> t.getDueDate().toLocalDate()));
+
+        List<com.example.demo.dto.TaskCalendarDayDTO> days = Stream.iterate(startDate, d -> !d.isAfter(endDate), d -> d.plusDays(1))
+                .map(d -> {
+                    List<TaskResponseDTO> dayTasks = grouped.getOrDefault(d, List.of())
+                            .stream()
+                            .map(TaskResponseDTO::new)
+                            .collect(Collectors.toList());
+                    return new com.example.demo.dto.TaskCalendarDayDTO(d, dayTasks);
+                })
+                .collect(Collectors.toList());
+
+        com.example.demo.dto.TaskCalendarResponseDTO response =
+                new com.example.demo.dto.TaskCalendarResponseDTO(startDate, endDate, days);
+
+        return ResponseEntity.ok(response);
     }
 }
 

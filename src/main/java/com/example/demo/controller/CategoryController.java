@@ -1,7 +1,9 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.CreateCategoryRequest;
+import com.example.demo.dto.CategorySuggestionRequest;
 import com.example.demo.service.CategoryService;
+import com.example.demo.service.CategorySuggestionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,6 +17,9 @@ public class CategoryController {
 
     @Autowired
     private CategoryService categoryService;
+
+    @Autowired
+    private CategorySuggestionService categorySuggestionService;
 
     /**
      * Tạo nhóm công việc mới
@@ -69,6 +74,16 @@ public class CategoryController {
     }
 
     /**
+     * Gợi ý category tốt nhất dựa trên mô tả task
+     * POST /api/categories/suggest
+     */
+    @PostMapping("/suggest")
+    public ResponseEntity<?> suggestCategory(@RequestBody CategorySuggestionRequest request) {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return ResponseEntity.ok(categorySuggestionService.suggestCategories(Long.parseLong(userId), request));
+    }
+
+    /**
      * Tìm kiếm nhóm theo tên
      * GET /api/categories/search?keyword=...
      */
@@ -76,6 +91,16 @@ public class CategoryController {
     public ResponseEntity<?> searchCategories(@RequestParam String keyword) {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         return categoryService.searchCategories(keyword, Long.parseLong(userId));
+    }
+
+    /**
+     * Khôi phục nhóm đã bị xoá
+     * PATCH /api/categories/{id}/restore
+     */
+    @PatchMapping("/{id}/restore")
+    public ResponseEntity<?> restoreCategory(@PathVariable Long id) {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return categoryService.restoreCategory(id, Long.parseLong(userId));
     }
 }
 

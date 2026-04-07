@@ -1,10 +1,15 @@
 package com.example.demo.repository;
 
+import com.example.demo.entity.Priority;
+import com.example.demo.entity.Status;
 import com.example.demo.entity.Tasks;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import com.example.demo.entity.Tasks;
 
 @Repository
 public interface TaskRepository extends JpaRepository<Tasks, Long> {
@@ -29,12 +34,54 @@ public interface TaskRepository extends JpaRepository<Tasks, Long> {
     // Lấy tất cả task active của một Category
     List<Tasks> findByCategoryIdAndIsActiveTrue(Long categoryId);
 
+    // Lấy tất cả task (active và inactive) của một Category
+    List<Tasks> findByCategoryId(Long categoryId);
+
+    // Lấy danh sách task theo trạng thái (Dùng cho AI)
+    List<Tasks> findByUserIdAndStatusAndIsActiveTrue(Long userId, Status status);
+
     // Tìm kiếm task theo tiêu đề cho user cụ thể
     List<Tasks> findByTitleContainingIgnoreCaseAndUserIdAndIsActiveTrue(String title, Long userId);
 
     // Tìm task theo priority và user
-    List<Tasks> findByUserIdAndIsActiveTrueAndPriority(Long userId, String priority);
+    List<Tasks> findByUserIdAndIsActiveTrueAndPriority(Long userId, Priority priority);
 
     // Tìm task theo status và user
-    List<Tasks> findByUserIdAndIsActiveTrueAndStatus(Long userId, String status);
+    List<Tasks> findByUserIdAndIsActiveTrueAndStatus(Long userId, Status status);
+
+    // Lấy danh sách task sắp xếp theo orderIndex (dùng cho chức năng Priority Ordering)
+    List<Tasks> findByUserIdAndIsActiveTrueOrderByOrderIndexAscIdAsc(Long userId);
+
+    // Lấy danh sách task sắp xếp theo ID tăng dần (dùng cho danh sách mặc định)
+    List<Tasks> findByUserIdAndIsActiveTrueOrderByIdAsc(Long userId);
+
+    // Tìm task theo ID và user (để verify ownership)
+    Tasks findByIdAndUserId(Long id, Long userId);
+
+    // Lấy task theo khoảng thời gian dueDate (nửa mở: start <= dueDate < end)
+    @Query("""
+        select t
+        from Tasks t
+        where t.user.id = :userId
+          and t.isActive = true
+          and t.dueDate is not null
+          and t.dueDate >= :start
+          and t.dueDate < :end
+        order by t.dueDate asc
+    """)
+    List<Tasks> findActiveTasksByUserIdDueDateRange(Long userId, LocalDateTime start, LocalDateTime end);
+
+
+    // Lấy task theo khoảng thời gian createdAt (nửa mở: start <= createdAt < end)
+    @Query("""
+        select t
+        from Tasks t
+        where t.user.id = :userId
+          and t.isActive = true
+          and t.createdAt >= :start
+          and t.createdAt < :end
+        order by t.createdAt asc
+    """)
+    List<Tasks> findActiveTasksByUserIdCreatedAtRange(Long userId, LocalDateTime start, LocalDateTime end);
+
 }

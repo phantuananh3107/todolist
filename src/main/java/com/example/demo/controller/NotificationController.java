@@ -1,0 +1,36 @@
+package com.example.demo.controller;
+
+import com.example.demo.service.NotificationService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/notifications")
+@PreAuthorize("isAuthenticated()")
+public class NotificationController {
+
+    @Autowired
+    private NotificationService notificationService;
+
+    @GetMapping("/unread")
+    public ResponseEntity<?> getUnread() {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return notificationService.getUnread(Long.parseLong(userId));
+    }
+
+    @GetMapping
+    public ResponseEntity<?> getAll() {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return notificationService.getAll(Long.parseLong(userId));
+    }
+
+    @PatchMapping("/{id}/read")
+    public ResponseEntity<?> markRead(@PathVariable("id") Long notificationId) {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return notificationService.markRead(Long.parseLong(userId), notificationId);
+    }
+}
+

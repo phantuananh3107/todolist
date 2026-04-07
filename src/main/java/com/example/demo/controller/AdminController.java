@@ -1,12 +1,15 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.AdminUserRequest;
-import com.example.demo.dto.UserStatsDTO;
 import com.example.demo.dto.UserResponseDTO;
 import com.example.demo.entity.User;
+import com.example.demo.repository.CategoryRepository;
 import com.example.demo.repository.TaskRepository;
 import com.example.demo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -14,7 +17,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -28,19 +30,38 @@ public class AdminController {
     private TaskRepository taskRepository;
 
     @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     // 1. Xem danh sách người dùng (ẩn password trước khi trả về)
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
+    public ResponseEntity<Page<UserResponseDTO>> getAllUsers(
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit) {
         String currentUserId = SecurityContextHolder.getContext().getAuthentication().getName();
-        List<User> users = userRepository.findAll();
-        List<UserResponseDTO> result = users.stream()
-                .filter(u -> !u.getId().toString().equals(currentUserId)) // Lọc bỏ chính mình
-                .map(UserResponseDTO::new)
-                .collect(Collectors.toList());
+        Long adminId = Long.parseLong(currentUserId);
+
+        // Spring Pageable tính từ 0, nên page 1 -> index 0
+        Pageable pageable = PageRequest.of(page - 1, limit);
+
+        Page<User> userPage = userRepository.searchUsers(keyword, adminId, pageable);
+
+        // Chuyển đổi Page<User> sang Page<UserResponseDTO>
+        Page<UserResponseDTO> result = userPage.map(UserResponseDTO::new);
+
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/users/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserResponseDTO> getUserById(@PathVariable Long id) {
+        return userRepository.findById(id)
+                .map(user -> ResponseEntity.ok(new UserResponseDTO(user)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // 2. Khoá tài khoản người dùng (PATCH)
@@ -65,6 +86,18 @@ public class AdminController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    // 3.5 Xoá mềm người dùng (PATCH)
+    @PatchMapping("/users/{id}/soft-delete")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserResponseDTO> softDeleteUser(@PathVariable Long id) {
+        return userRepository.findById(id).map(user -> {
+            user.setIsDeleted(true);
+            user.setIsActive(false); // Khi xoá mềm thì cũng khoá luôn
+            userRepository.save(user);
+            return ResponseEntity.ok(new UserResponseDTO(user));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     // 4. Xoá cứng người dùng (Xoá hẳn khỏi Database)
     @DeleteMapping("/users/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable Long id) {
@@ -74,10 +107,18 @@ public class AdminController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    // 5. Xem thống kê tổng số task trong hệ thống của từng người dùng
+    // 5. Xem thống kê chi tiết (gồm Category và Task) của từng người dùng
     @GetMapping("/stats/tasks")
-    public List<UserStatsDTO> getUserTaskStats() {
-        return userRepository.getUserTaskStats();
+    public List<UserResponseDTO> getUserTaskStats() {
+        // Lấy tất cả user chưa xoá (ngoại trừ chính mình nếu cần, nhưng thường stats
+        // thì lấy hết)
+        List<User> users = userRepository.findAll().stream()
+                .filter(u -> u.getIsDeleted() == null || !u.getIsDeleted())
+                .toList();
+
+        return users.stream()
+                .map(UserResponseDTO::new)
+                .toList();
     }
 
     // --- MỚI: FULL CRUD CHO ADMIN ---
@@ -141,6 +182,34 @@ public class AdminController {
 
             User updatedUser = userRepository.save(user);
             return ResponseEntity.ok(new UserResponseDTO(updatedUser));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // 8. Admin xoá mềm Task của user
+    @PatchMapping("/tasks/{id}/soft-delete")
+    public ResponseEntity<?> softDeleteTask(@PathVariable Long id) {
+        return taskRepository.findById(id).map(task -> {
+            task.setIsActive(false);
+            taskRepository.save(task);
+            return ResponseEntity.ok("Đã xoá mềm công việc: " + task.getTitle());
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // 9. Admin xoá mềm Category của user
+    @PatchMapping("/categories/{id}/soft-delete")
+    public ResponseEntity<?> softDeleteCategory(@PathVariable Long id) {
+        return categoryRepository.findById(id).map(category -> {
+            category.setIsActive(false);
+            categoryRepository.save(category);
+
+            // Vô hiệu hoá tất cả task thuộc category này
+            List<com.example.demo.entity.Tasks> tasks = taskRepository.findByCategoryIdAndIsActiveTrue(id);
+            for (com.example.demo.entity.Tasks task : tasks) {
+                task.setIsActive(false);
+                taskRepository.save(task);
+            }
+
+            return ResponseEntity.ok("Đã xoá mềm nhóm: " + category.getName() + " và các công việc liên quan.");
         }).orElse(ResponseEntity.notFound().build());
     }
 }
