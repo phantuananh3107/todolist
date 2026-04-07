@@ -13,6 +13,7 @@ public class CategoryResponseDTO {
     private Long id;
     private String name;
     private Boolean isActive;
+    private String colorHex;
     private Long taskCount;
     private List<TaskResponseDTO> tasks;
 
@@ -20,6 +21,7 @@ public class CategoryResponseDTO {
         this.id = category.getId();
         this.name = category.getName();
         this.isActive = category.getIsActive();
+        this.colorHex = category.getColorHex();
         
         // Lọc các task chưa xoá (isActive = true)
         if (category.getTasks() != null) {

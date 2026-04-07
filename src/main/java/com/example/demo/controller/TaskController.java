@@ -143,6 +143,18 @@ public class TaskController {
     }
 
     /**
+     * Thống kê task cho màn hình chart
+     * GET /api/tasks/stats?range=DAY|WEEK|MONTH&basis=DUE_DATE|CREATED_AT
+     */
+    @GetMapping("/stats")
+    public ResponseEntity<?> getTaskStats(
+            @RequestParam(defaultValue = "WEEK") String range,
+            @RequestParam(defaultValue = "DUE_DATE") String basis) {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return taskService.getTaskStats(Long.parseLong(userId), range, basis);
+    }
+
+    /**
      * Lấy công việc theo ngày
      * GET /api/tasks/by-date?date=yyyy-MM-dd
      */
