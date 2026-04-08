@@ -17,13 +17,24 @@ class ApiUnauthorizedException implements Exception {
 }
 
 class ApiService {
+  static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+
   static String get baseUrl {
+<<<<<<< HEAD
     if (kIsWeb) return 'http://localhost:9090';
+=======
+    if (_envBaseUrl.trim().isNotEmpty) return _envBaseUrl.trim();
+    if (kIsWeb) return 'http://localhost:8080';
+>>>>>>> b29db77cf9e45015fba985d7dadd131f2c021e9d
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return 'http://10.0.2.2:9090';
       default:
+<<<<<<< HEAD
         return 'http://localhost:9090';
+=======
+        return 'http://127.0.0.1:8080';
+>>>>>>> b29db77cf9e45015fba985d7dadd131f2c021e9d
     }
   }
 
@@ -400,6 +411,81 @@ class ApiService {
     throw _httpError(response);
   }
 
+
+  static Future<Map<String, dynamic>> createAdminUser({
+    required String username,
+    required String email,
+    required String role,
+    required bool isActive,
+    String? password,
+    String? confirmPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/admin/users'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'username': username,
+        'email': email,
+        'role': role,
+        'isActive': isActive,
+        'password': password,
+        'confirmPassword': confirmPassword,
+      }),
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    throw _httpError(response);
+  }
+
+  static Future<void> updateAdminUser(
+    int id, {
+    required String username,
+    required String email,
+    required String role,
+    required bool isActive,
+    String? password,
+    String? confirmPassword,
+  }) async {
+    final body = <String, dynamic>{
+      'username': username,
+      'email': email,
+      'role': role,
+      'isActive': isActive,
+    };
+
+    if (password != null && password.trim().isNotEmpty) {
+      body['password'] = password.trim();
+      body['confirmPassword'] = (confirmPassword ?? '').trim();
+    }
+
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/admin/users/$id'),
+      headers: await _headers(),
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _httpError(response);
+    }
+  }
+
+  static Future<void> softDeleteTaskAdmin(int id) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/admin/tasks/$id/soft-delete'),
+      headers: await _headers(),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) throw _httpError(response);
+  }
+
+  static Future<void> softDeleteCategoryAdmin(int id) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/admin/categories/$id/soft-delete'),
+      headers: await _headers(),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) throw _httpError(response);
+  }
+
   static Future<List<Map<String, dynamic>>> fetchAdminStats() async {
     final response = await http.get(Uri.parse('$baseUrl/api/admin/stats/tasks'), headers: await _headers());
     if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -407,6 +493,12 @@ class ApiService {
       return data.cast<Map<String, dynamic>>();
     }
     throw _httpError(response);
+  }
+
+
+  static Future<void> softDeleteUser(int id) async {
+    final response = await http.patch(Uri.parse('$baseUrl/api/admin/users/$id/soft-delete'), headers: await _headers());
+    if (response.statusCode < 200 || response.statusCode >= 300) throw _httpError(response);
   }
 
   static Future<void> lockUser(int id) async {

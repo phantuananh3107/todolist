@@ -49,12 +49,21 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
         _tasks = tasks;
         _loading = false;
       });
-    } catch (_) {
+    } catch (e) {
+      if (ApiService.isUnauthorized(e)) {
+        if (!mounted) return;
+        setState(() => _loading = false);
+        await handleUnauthorized(context);
+        return;
+      }
       if (!mounted) return;
       setState(() {
-        _tasks = demoTasks;
+        _tasks = [];
         _loading = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không tải được danh sách task từ backend (${ApiService.baseUrl}).')),
+      );
     }
   }
 

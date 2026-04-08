@@ -69,21 +69,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final userId = await ApiService.getUserId();
       final role = await ApiService.getRole();
       if (!mounted) return;
-      final demo = demoTasks;
       setState(() {
         _profile = {
           'id': userId ?? 0,
-          'username': username ?? 'Demo User',
-          'email': email ?? 'demo@gmail.com',
+          'username': username ?? 'Người dùng',
+          'email': email ?? '',
           'role': role ?? 'USER',
         };
-        _taskStats = {
-          'total': demo.length,
-          'done': demo.where((e) => e.status == 'DONE').length,
-          'doing': demo.where((e) => e.status == 'DOING').length,
-        };
+        _taskStats = const {'total': 0, 'done': 0, 'doing': 0};
         _loading = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không tải được hồ sơ từ backend (${ApiService.baseUrl}).')),
+      );
     }
   }
 
@@ -262,16 +260,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      SectionCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Gợi ý hoàn thiện hồ sơ', style: Theme.of(context).textTheme.titleLarge),
-                            const SizedBox(height: 6),
-                            Text('Ảnh đại diện, email và bảo mật tài khoản rõ ràng sẽ giúp bản demo của bạn chuyên nghiệp hơn.', style: Theme.of(context).textTheme.bodyMedium),
-                          ],
-                        ),
-                      ),
                       const SizedBox(height: 20),
                       FilledButton.icon(
                         onPressed: () async {

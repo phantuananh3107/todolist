@@ -55,22 +55,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         await handleUnauthorized(context);
         return;
       }
-      try {
-        final tasks = await ApiService.fetchTasks();
-        if (!mounted) return;
-        setState(() {
-          _items = ApiService.buildDemoNotifications(tasks);
-          _reminders = ApiService.buildDemoReminders(tasks);
-          _loading = false;
-        });
-      } catch (_) {
-        if (!mounted) return;
-        setState(() {
-          _items = ApiService.buildDemoNotifications(demoTasks);
-          _reminders = ApiService.buildDemoReminders(demoTasks);
-          _loading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _items = [];
+        _reminders = [];
+        _loading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không tải được thông báo từ backend (${ApiService.baseUrl}).')),
+      );
     }
   }
 
@@ -187,7 +180,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             const ScreenHeader(
               eyebrow: 'Inbox',
               title: 'Thông báo',
-              subtitle: 'Mình gộp reminder và activity vào cùng một luồng để nhìn dễ hơn. Những mục chưa xem sẽ hiện ngay phía trên.',
+              subtitle: 'Tổng hợp nhắc việc và hoạt động mới nhất của tài khoản.',
               icon: Icons.notifications_active_rounded,
             ),
             const SizedBox(height: 18),
@@ -205,7 +198,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               EmptyStateCard(
                 icon: Icons.notifications_off_outlined,
                 title: 'Chưa có thông báo',
-                message: 'Khi có nhắc việc hoặc hoạt động mới, mình sẽ đưa vào đây theo một danh sách chung.',
+                message: 'Khi có nhắc việc hoặc hoạt động mới, danh sách sẽ hiển thị tại đây.',
                 actionLabel: 'Làm mới',
                 onAction: _load,
               )
@@ -215,7 +208,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Những mục có badge đỏ là chưa đọc. Reminder cũng được tính chung vào thông báo để số liệu đồng nhất hơn.',
+                        'Các mục có dấu đỏ là thông báo chưa đọc.',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ),
