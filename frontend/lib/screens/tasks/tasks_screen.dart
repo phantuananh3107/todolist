@@ -75,15 +75,12 @@ class _TasksScreenState extends State<TasksScreen> {
       }
       if (!mounted) return;
       setState(() {
-        tasks = demoTasks;
-        categories = [
-          CategoryItem(id: 0, name: 'All', taskCount: demoTasks.length),
-          ...demoCategories.where((c) => c.name != 'All'),
-        ];
+        tasks = [];
+        categories = [CategoryItem(id: 0, name: 'All', taskCount: 0)];
         loading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không tải được dữ liệu mới.')),
+        SnackBar(content: Text('Không kết nối được backend tại ${ApiService.baseUrl}. Hãy kiểm tra backend đang chạy ở cổng 8080.')),
       );
     }
   }
@@ -452,7 +449,7 @@ class _TasksScreenState extends State<TasksScreen> {
                 children: [
                   const NotificationButton(),
                   const SizedBox(width: 10),
-                  _IconCircleButton(icon: Icons.add_rounded, onTap: () => _openTaskForm()),
+                  _IconCircleButton(icon: Icons.add_rounded, onTap: () => _openCategoryManagement()),
                 ],
               ),
             ),

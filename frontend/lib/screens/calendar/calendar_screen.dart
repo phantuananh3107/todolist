@@ -63,12 +63,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
       if (!mounted) return;
       setState(() {
-        _tasks = demoTasks;
+        _tasks = [];
         _categories = [];
         _loading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không tải được dữ liệu mới')), 
+        SnackBar(content: Text('Không kết nối được backend tại ${ApiService.baseUrl}.')), 
       );
     }
   }

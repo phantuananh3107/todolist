@@ -69,21 +69,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final userId = await ApiService.getUserId();
       final role = await ApiService.getRole();
       if (!mounted) return;
-      final demo = demoTasks;
       setState(() {
         _profile = {
           'id': userId ?? 0,
-          'username': username ?? 'Demo User',
-          'email': email ?? 'demo@gmail.com',
+          'username': username ?? 'Người dùng',
+          'email': email ?? '',
           'role': role ?? 'USER',
         };
-        _taskStats = {
-          'total': demo.length,
-          'done': demo.where((e) => e.status == 'DONE').length,
-          'doing': demo.where((e) => e.status == 'DOING').length,
-        };
+        _taskStats = const {'total': 0, 'done': 0, 'doing': 0};
         _loading = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không tải được hồ sơ từ backend (${ApiService.baseUrl}).')),
+      );
     }
   }
 

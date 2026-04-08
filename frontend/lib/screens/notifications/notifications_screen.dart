@@ -55,22 +55,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         await handleUnauthorized(context);
         return;
       }
-      try {
-        final tasks = await ApiService.fetchTasks();
-        if (!mounted) return;
-        setState(() {
-          _items = ApiService.buildDemoNotifications(tasks);
-          _reminders = ApiService.buildDemoReminders(tasks);
-          _loading = false;
-        });
-      } catch (_) {
-        if (!mounted) return;
-        setState(() {
-          _items = ApiService.buildDemoNotifications(demoTasks);
-          _reminders = ApiService.buildDemoReminders(demoTasks);
-          _loading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _items = [];
+        _reminders = [];
+        _loading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không tải được thông báo từ backend (${ApiService.baseUrl}).')),
+      );
     }
   }
 

@@ -85,7 +85,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   void _openUserDetail(Map<String, dynamic> user) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => _UserDetailScreen(user: user, onToggleLock: () => _toggleLock(user))));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _UserDetailScreen(
+          user: user,
+          onToggleLock: () => _toggleLock(user),
+          onChanged: _load,
+        ),
+      ),
+    );
   }
 
   @override
@@ -102,7 +110,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             const ScreenHeader(
               eyebrow: 'Admin',
               title: 'User Management',
-              subtitle: 'Mình đang bám danh sách user kiểu mobile card. Những thao tác chỉnh sâu hơn vẫn sẽ nối backend sau.',
+              subtitle: 'Quản lý tài khoản người dùng, chỉnh sửa thông tin, khóa hoặc vô hiệu hóa tài khoản trực tiếp từ đây.',
               icon: Icons.people_alt_rounded,
             ),
             const SizedBox(height: 18),
@@ -164,11 +172,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
                   Text('Ghi chú quản trị'),
                   SizedBox(height: 12),
-                  _TodoLine(text: 'Edit user profile đang ở mức giao diện để bám figma trước.'),
+                  _TodoLine(text: 'Chỉnh sửa hồ sơ người dùng đã nối backend.'),
                   SizedBox(height: 8),
-                  _TodoLine(text: 'Reset password từ admin cần API riêng nên mình đang để action note.'),
+                  _TodoLine(text: 'Khóa/mở khóa và vô hiệu hóa tài khoản đang chạy với backend hiện tại.'),
                   SizedBox(height: 8),
-                  _TodoLine(text: 'Delete user vẫn để note để tránh xóa nhầm trong lúc demo.'),
+                  _TodoLine(text: 'Xóa tài khoản đang dùng soft delete để an toàn khi demo.'),
                 ]),
               ),
             ],
@@ -251,10 +259,11 @@ class _UserCard extends StatelessWidget {
 }
 
 class _UserDetailScreen extends StatelessWidget {
-  const _UserDetailScreen({required this.user, required this.onToggleLock});
+  const _UserDetailScreen({required this.user, required this.onToggleLock, required this.onChanged});
 
   final Map<String, dynamic> user;
   final Future<void> Function() onToggleLock;
+  final Future<void> Function() onChanged;
 
   int get taskCount {
     final categories = (user['categories'] as List<dynamic>? ?? const []);
@@ -316,9 +325,19 @@ class _UserDetailScreen extends StatelessWidget {
           _ActionTile(
             icon: Icons.edit_rounded,
             title: 'Edit User Profile',
-            subtitle: 'Mình đang dựng giao diện trước, phần lưu thật sẽ nối backend sau.',
+            subtitle: 'Cập nhật tên, email, vai trò, trạng thái và mật khẩu cho tài khoản này.',
             primary: true,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mình đang dựng giao diện sửa hồ sơ trước.'))),
+            onTap: () async {
+              final updated = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => _EditUserScreen(user: user),
+                ),
+              );
+              if (updated == true && context.mounted) {
+                await onChanged();
+                Navigator.pop(context);
+              }
+            },
           ),
           const SizedBox(height: 12),
           _ActionTile(
@@ -341,9 +360,43 @@ class _UserDetailScreen extends StatelessWidget {
           _ActionTile(
             icon: Icons.delete_outline_rounded,
             title: 'Delete User Account',
-            subtitle: 'Mình đang để note trước để tránh xóa nhầm trong lúc demo.',
+            subtitle: 'Vô hiệu hóa mềm tài khoản này trên backend để tránh xóa nhầm dữ liệu thật.',
             danger: true,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mình chưa nối backend xóa tài khoản.'))),
+            onTap: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (dialogContext) => AlertDialog(
+                  title: const Text('Vô hiệu hóa tài khoản?'),
+                  content: Text('Tài khoản ${(user['username'] ?? '').toString()} sẽ bị soft delete và không còn hoạt động.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Hủy')),
+                    FilledButton(
+                      style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+                      onPressed: () => Navigator.pop(dialogContext, true),
+                      child: const Text('Xác nhận'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed != true || !context.mounted) return;
+              final messenger = ScaffoldMessenger.of(context);
+              try {
+                final idRaw = user['id'];
+                final id = idRaw is int ? idRaw : int.tryParse(idRaw.toString());
+                if (id == null) throw Exception('Thiếu id người dùng');
+                await ApiService.softDeleteUser(id);
+                await onChanged();
+                if (!context.mounted) return;
+                messenger.showSnackBar(const SnackBar(content: Text('Đã vô hiệu hóa tài khoản.')));
+                Navigator.pop(context);
+              } catch (e) {
+                if (ApiService.isUnauthorized(e)) {
+                  await handleUnauthorized(context);
+                  return;
+                }
+                messenger.showSnackBar(const SnackBar(content: Text('Không thể vô hiệu hóa tài khoản.')));
+              }
+            },
           ),
         ],
       ),
@@ -456,5 +509,174 @@ class _TodoLine extends StatelessWidget {
       const SizedBox(width: 10),
       Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.text))),
     ]);
+  }
+}
+
+
+class _EditUserScreen extends StatefulWidget {
+  final Map<String, dynamic> user;
+
+  const _EditUserScreen({required this.user});
+
+  @override
+  State<_EditUserScreen> createState() => _EditUserScreenState();
+}
+
+class _EditUserScreenState extends State<_EditUserScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  late final TextEditingController _usernameController;
+  late final TextEditingController _emailController;
+  late final TextEditingController _passwordController;
+  late final TextEditingController _confirmPasswordController;
+
+  late String _role;
+  late bool _isActive;
+
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _usernameController = TextEditingController(
+      text: (widget.user['username'] ?? '').toString(),
+    );
+    _emailController = TextEditingController(
+      text: (widget.user['email'] ?? '').toString(),
+    );
+    _passwordController = TextEditingController();
+    _confirmPasswordController = TextEditingController();
+    _role = (widget.user['role'] ?? 'USER').toString();
+    _isActive = widget.user['isActive'] == true;
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    try {
+      await ApiService.updateAdminUser(
+        (widget.user['id'] as num).toInt(),
+        username: _usernameController.text.trim(),
+        email: _emailController.text.trim(),
+        role: _role,
+        isActive: _isActive,
+        password: _passwordController.text.trim().isEmpty ? null : _passwordController.text.trim(),
+        confirmPassword: _confirmPasswordController.text.trim().isEmpty ? null : _confirmPasswordController.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cập nhật người dùng thành công')),
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (ApiService.isUnauthorized(e)) {
+        await handleUnauthorized(context);
+        return;
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không thể cập nhật user: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Chỉnh sửa người dùng')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _usernameController,
+                decoration: const InputDecoration(labelText: 'Tên người dùng'),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Vui lòng nhập tên người dùng';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(labelText: 'Email'),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Vui lòng nhập email';
+                  }
+                  if (!value.contains('@')) {
+                    return 'Email không hợp lệ';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _role,
+                decoration: const InputDecoration(labelText: 'Vai trò'),
+                items: const [
+                  DropdownMenuItem(value: 'USER', child: Text('USER')),
+                  DropdownMenuItem(value: 'ADMIN', child: Text('ADMIN')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _role = value);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Kích hoạt tài khoản'),
+                value: _isActive,
+                onChanged: (value) => setState(() => _isActive = value),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Mật khẩu mới (không bắt buộc)'),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _confirmPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Xác nhận mật khẩu mới'),
+                validator: (value) {
+                  if (_passwordController.text.trim().isNotEmpty &&
+                      value!.trim() != _passwordController.text.trim()) {
+                    return 'Xác nhận mật khẩu không khớp';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _saving ? null : _save,
+                  child: Text(_saving ? 'Đang lưu...' : 'Lưu thay đổi'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

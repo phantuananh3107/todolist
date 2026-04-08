@@ -17,13 +17,16 @@ class ApiUnauthorizedException implements Exception {
 }
 
 class ApiService {
+  static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+
   static String get baseUrl {
+    if (_envBaseUrl.trim().isNotEmpty) return _envBaseUrl.trim();
     if (kIsWeb) return 'http://localhost:8080';
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return 'http://10.0.2.2:8080';
       default:
-        return 'http://localhost:8080';
+        return 'http://127.0.0.1:8080';
     }
   }
 
@@ -409,6 +412,12 @@ class ApiService {
     throw _httpError(response);
   }
 
+
+  static Future<void> softDeleteUser(int id) async {
+    final response = await http.patch(Uri.parse('$baseUrl/api/admin/users/$id/soft-delete'), headers: await _headers());
+    if (response.statusCode < 200 || response.statusCode >= 300) throw _httpError(response);
+  }
+
   static Future<void> lockUser(int id) async {
     final response = await http.patch(Uri.parse('$baseUrl/api/admin/users/$id/lock'), headers: await _headers());
     if (response.statusCode < 200 || response.statusCode >= 300) throw _httpError(response);
@@ -417,6 +426,38 @@ class ApiService {
   static Future<void> unlockUser(int id) async {
     final response = await http.patch(Uri.parse('$baseUrl/api/admin/users/$id/unlock'), headers: await _headers());
     if (response.statusCode < 200 || response.statusCode >= 300) throw _httpError(response);
+  }
+
+  static Future<void> updateAdminUser(
+    int id, {
+    required String username,
+    required String email,
+    required String role,
+    required bool isActive,
+    String? password,
+    String? confirmPassword,
+  }) async {
+    final body = <String, dynamic>{
+      'username': username,
+      'email': email,
+      'role': role,
+      'isActive': isActive,
+    };
+
+    if (password != null && password.trim().isNotEmpty) {
+      body['password'] = password.trim();
+      body['confirmPassword'] = (confirmPassword ?? '').trim();
+    }
+
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/admin/users/$id'),
+      headers: await _headers(),
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _httpError(response);
+    }
   }
 
   static List<ReminderItem> buildDemoReminders(List<TaskItem> tasks) {
