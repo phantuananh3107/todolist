@@ -70,4 +70,18 @@ public interface TaskRepository extends JpaRepository<Tasks, Long> {
         order by t.dueDate asc
     """)
     List<Tasks> findActiveTasksByUserIdDueDateRange(Long userId, LocalDateTime start, LocalDateTime end);
+
+
+    // Lấy task theo khoảng thời gian createdAt (nửa mở: start <= createdAt < end)
+    @Query("""
+        select t
+        from Tasks t
+        where t.user.id = :userId
+          and t.isActive = true
+          and t.createdAt >= :start
+          and t.createdAt < :end
+        order by t.createdAt asc
+    """)
+    List<Tasks> findActiveTasksByUserIdCreatedAtRange(Long userId, LocalDateTime start, LocalDateTime end);
+
 }

@@ -1,7 +1,9 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.CreateCategoryRequest;
+import com.example.demo.dto.CategorySuggestionRequest;
 import com.example.demo.service.CategoryService;
+import com.example.demo.service.CategorySuggestionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,6 +17,9 @@ public class CategoryController {
 
     @Autowired
     private CategoryService categoryService;
+
+    @Autowired
+    private CategorySuggestionService categorySuggestionService;
 
     /**
      * Tạo nhóm công việc mới
@@ -66,6 +71,16 @@ public class CategoryController {
     public ResponseEntity<?> deleteCategory(@PathVariable Long id) {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         return categoryService.deleteCategory(id, Long.parseLong(userId));
+    }
+
+    /**
+     * Gợi ý category tốt nhất dựa trên mô tả task
+     * POST /api/categories/suggest
+     */
+    @PostMapping("/suggest")
+    public ResponseEntity<?> suggestCategory(@RequestBody CategorySuggestionRequest request) {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return ResponseEntity.ok(categorySuggestionService.suggestCategories(Long.parseLong(userId), request));
     }
 
     /**

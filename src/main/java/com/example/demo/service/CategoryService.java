@@ -15,11 +15,30 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 public class CategoryService {
+
+    private String normalizeColorHex(String rawColorHex) {
+        if (rawColorHex == null || rawColorHex.trim().isEmpty()) {
+            return null;
+        }
+
+        String normalized = rawColorHex.trim().toUpperCase(Locale.ROOT);
+        if (!normalized.startsWith("#")) {
+            normalized = "#" + normalized;
+        }
+
+        if (!normalized.matches("^#[0-9A-F]{6}$")) {
+            throw new IllegalArgumentException("Màu category không hợp lệ! Dùng định dạng #RRGGBB.");
+        }
+
+        return normalized;
+    }
+
 
     @Autowired
     private CategoryRepository categoryRepository;
@@ -52,9 +71,17 @@ public class CategoryService {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Tên nhóm đã tồn tại!");
         }
 
+        final String normalizedColorHex;
+        try {
+            normalizedColorHex = normalizeColorHex(request.getColorHex());
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+        }
+
         // Create category
         Category category = new Category();
-        category.setName(request.getName());
+        category.setName(request.getName().trim());
+        category.setColorHex(normalizedColorHex);
         category.setUser(user);
         category.setIsActive(true);
 
@@ -108,6 +135,7 @@ public class CategoryService {
         response.put("id", category.getId());
         response.put("name", category.getName());
         response.put("isActive", category.getIsActive());
+        response.put("colorHex", category.getColorHex());
         response.put("tasks", taskDTOs);
         response.put("taskCount", (long) taskDTOs.size());
 
@@ -141,7 +169,15 @@ public class CategoryService {
             }
         }
 
-        category.setName(request.getName());
+        final String normalizedColorHex;
+        try {
+            normalizedColorHex = normalizeColorHex(request.getColorHex());
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+        }
+
+        category.setName(request.getName().trim());
+        category.setColorHex(normalizedColorHex);
         Category updated = categoryRepository.save(category);
 
         return ResponseEntity.ok(new CategoryResponseDTO(updated));

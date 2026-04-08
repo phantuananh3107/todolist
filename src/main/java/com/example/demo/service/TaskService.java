@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.dto.CreateTaskRequest;
 import com.example.demo.dto.TaskResponseDTO;
+import com.example.demo.dto.TaskStatsResponseDTO;
 import com.example.demo.dto.UpdateTaskRequest;
 import com.example.demo.entity.Category;
 import com.example.demo.entity.Priority;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -492,6 +494,97 @@ public class TaskService {
                 "message", "Sắp xếp công việc thành công!",
                 "tasks", result
         ));
+    }
+
+    /**
+     * Thống kê task theo khoảng thời gian cho màn hình Chart.
+     * range: DAY | WEEK | MONTH
+     * basis: DUE_DATE | CREATED_AT (mặc định DUE_DATE)
+     */
+    public ResponseEntity<?> getTaskStats(Long userId, String range, String basis) {
+        String normalizedRange = (range == null || range.isBlank()) ? "WEEK" : range.trim().toUpperCase();
+        String normalizedBasis = (basis == null || basis.isBlank()) ? "DUE_DATE" : basis.trim().toUpperCase();
+
+        if (!List.of("DAY", "WEEK", "MONTH").contains(normalizedRange)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("range không hợp lệ! (DAY, WEEK, MONTH)");
+        }
+
+        if (!List.of("DUE_DATE", "CREATED_AT").contains(normalizedBasis)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("basis không hợp lệ! (DUE_DATE, CREATED_AT)");
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate startDate;
+        LocalDate endDateInclusive;
+
+        switch (normalizedRange) {
+            case "DAY" -> {
+                startDate = today;
+                endDateInclusive = today;
+            }
+            case "MONTH" -> {
+                startDate = today.withDayOfMonth(1);
+                endDateInclusive = today.withDayOfMonth(today.lengthOfMonth());
+            }
+            default -> {
+                startDate = today.with(DayOfWeek.MONDAY);
+                endDateInclusive = startDate.plusDays(6);
+            }
+        }
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime endExclusive = endDateInclusive.plusDays(1).atStartOfDay();
+        List<Tasks> tasks = "CREATED_AT".equals(normalizedBasis)
+                ? taskRepository.findActiveTasksByUserIdCreatedAtRange(userId, start, endExclusive)
+                : taskRepository.findActiveTasksByUserIdDueDateRange(userId, start, endExclusive);
+
+        LocalDateTime now = LocalDateTime.now();
+        long todo = 0;
+        long doing = 0;
+        long done = 0;
+        long overdue = 0;
+
+        for (Tasks task : tasks) {
+            Status effectiveStatus = resolveEffectiveStatus(task, now);
+            switch (effectiveStatus) {
+                case DONE -> done++;
+                case DOING -> doing++;
+                case OVERDUE -> overdue++;
+                case TODO -> todo++;
+            }
+        }
+
+        long total = tasks.size();
+        long incomplete = total - done;
+        double completionRate = total == 0 ? 0.0 : (done * 100.0) / total;
+
+        TaskStatsResponseDTO response = new TaskStatsResponseDTO(
+                normalizedRange,
+                normalizedBasis,
+                start,
+                endExclusive.minusSeconds(1),
+                total,
+                todo,
+                doing,
+                done,
+                overdue,
+                incomplete,
+                Math.round(completionRate * 100.0) / 100.0
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    private Status resolveEffectiveStatus(Tasks task, LocalDateTime now) {
+        if (task.getStatus() == Status.DONE) {
+            return Status.DONE;
+        }
+        if (task.getDueDate() != null && task.getDueDate().isBefore(now)) {
+            return Status.OVERDUE;
+        }
+        return task.getStatus() == null ? Status.TODO : task.getStatus();
     }
 
     /**
