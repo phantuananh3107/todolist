@@ -452,7 +452,7 @@ class _TasksScreenState extends State<TasksScreen> {
                 children: [
                   const NotificationButton(),
                   const SizedBox(width: 10),
-                  _IconCircleButton(icon: Icons.add_rounded, onTap: () => _openTaskForm()),
+                  _IconCircleButton(icon: Icons.add_rounded, onTap: () => _openCategoryManagement()),
                 ],
               ),
             ),
