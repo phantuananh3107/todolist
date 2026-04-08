@@ -35,6 +35,11 @@ public class User {
     // Token cũ sẽ chứa version cũ → so sánh không khớp → bị từ chối.
     private Integer tokenVersion = 0;
 
+    @Column(length = 2048)
+    private String fcmToken;
+
+    private Boolean pushEnabled = true;
+
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)

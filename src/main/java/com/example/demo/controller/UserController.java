@@ -4,6 +4,7 @@ import com.example.demo.dto.ChangePasswordRequest;
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.RegisterRequest;
 import com.example.demo.dto.LoginResponse;
+import com.example.demo.dto.PushTokenRequest;
 import com.example.demo.dto.UpdateProfileRequest;
 import com.example.demo.dto.UserResponseDTO;
 import com.example.demo.entity.User;
@@ -17,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -163,6 +165,38 @@ public class UserController {
             // FE!
             return ResponseEntity.ok(new UserResponseDTO(savedUser));
         }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // 4.1 Đăng ký / cập nhật FCM token để backend gửi push notification
+    @PatchMapping("/push-token")
+    public ResponseEntity<?> updatePushToken(@RequestBody PushTokenRequest request) {
+        String currentUserId = SecurityContextHolder.getContext().getAuthentication().getName();
+        Optional<User> userOpt = userRepository.findById(Long.parseLong(currentUserId));
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Không tìm thấy người dùng!");
+        }
+
+        User user = userOpt.get();
+
+        if (request.getFcmToken() != null) {
+            String token = request.getFcmToken().trim();
+            if (token.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("fcmToken không hợp lệ!");
+            }
+            user.setFcmToken(token);
+        }
+
+        if (request.getEnabled() != null) {
+            user.setPushEnabled(request.getEnabled());
+        } else if (request.getFcmToken() != null) {
+            user.setPushEnabled(true);
+        }
+
+        userRepository.save(user);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Cập nhật push token thành công!",
+                "pushEnabled", Boolean.TRUE.equals(user.getPushEnabled())));
     }
 
     // 5. Đổi mật khẩu (PATCH)
