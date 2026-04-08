@@ -13,4 +13,15 @@ public class SnoozeRequestDTO {
      * Ví dụ: 5 (5 phút), 60 (1 giờ), 120 (2 giờ)
      */
     private Integer snoozeMinutes;
+
+    /**
+     * Giá trị khoảng thời gian cần snooze.
+     * Ví dụ: 5, 2, 1
+     */
+    private Integer value;
+
+    /**
+     * Đơn vị snooze: MINUTES | HOURS | DAYS
+     */
+    private String unit;
 }

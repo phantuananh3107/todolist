@@ -77,7 +77,11 @@ public class PushNotificationService {
             }
         }
 
-        return null;
+        try {
+            return GoogleCredentials.getApplicationDefault();
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     public boolean sendReminderNotification(User user, Notification notification) {
@@ -114,6 +118,8 @@ public class PushNotificationService {
                 .putData("notificationId", String.valueOf(notification.getId()))
                 .putData("taskId", String.valueOf(notification.getTaskId()))
                 .putData("reminderId", String.valueOf(notification.getReminderId()))
+                .putData("actionAcknowledge", "true")
+                .putData("actionSnooze", "true")
                 .build();
 
         try {

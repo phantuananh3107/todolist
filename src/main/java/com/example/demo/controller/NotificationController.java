@@ -24,28 +24,38 @@ public class NotificationController {
 
     @GetMapping("/unread")
     public ResponseEntity<?> getUnread() {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return notificationService.getUnread(Long.parseLong(userId));
+        return notificationService.getUnread(
+                Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()));
     }
 
     @GetMapping
     public ResponseEntity<?> getAll() {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return notificationService.getAll(Long.parseLong(userId));
+        return notificationService.getAll(
+                Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()));
     }
 
     @PatchMapping("/{id}/read")
     public ResponseEntity<?> markRead(@PathVariable("id") Long notificationId) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return notificationService.markRead(Long.parseLong(userId), notificationId);
+        return notificationService.markRead(
+                Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()),
+                notificationId);
+    }
+
+    @PatchMapping("/{id}/acknowledge")
+    public ResponseEntity<?> acknowledgeNotification(@PathVariable("id") Long notificationId) {
+        return notificationService.acknowledgeNotification(
+                Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()),
+                notificationId);
     }
 
     @PatchMapping("/{id}/snooze")
     public ResponseEntity<?> snoozeNotification(
             @PathVariable("id") Long notificationId,
             @RequestBody SnoozeRequestDTO request) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return notificationService.snoozeNotification(Long.parseLong(userId), notificationId, request);
+        return notificationService.snoozeNotification(
+                Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()),
+                notificationId,
+                request);
     }
 }
 

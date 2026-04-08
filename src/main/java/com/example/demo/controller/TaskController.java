@@ -36,8 +36,7 @@ public class TaskController {
      */
     @PostMapping
     public ResponseEntity<?> createTask(@RequestBody CreateTaskRequest request) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return taskService.createTask(Long.parseLong(userId), request);
+        return taskService.createTask(Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()), request);
     }
 
     /**
@@ -46,8 +45,7 @@ public class TaskController {
      */
     @GetMapping
     public ResponseEntity<?> getTasks() {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return taskService.getTasksByUserId(Long.parseLong(userId));
+        return taskService.getTasksByUserId(Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()));
     }
 
     /**
@@ -56,8 +54,7 @@ public class TaskController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<?> getTaskById(@PathVariable Long id) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return taskService.getTaskById(id, Long.parseLong(userId));
+        return taskService.getTaskById(id, Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()));
     }
 
     /**
@@ -68,8 +65,7 @@ public class TaskController {
     public ResponseEntity<?> updateTask(
             @PathVariable Long id,
             @RequestBody UpdateTaskRequest request) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return taskService.updateTask(id, Long.parseLong(userId), request);
+        return taskService.updateTask(id, Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()), request);
     }
 
     /**
@@ -78,8 +74,7 @@ public class TaskController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteTask(@PathVariable Long id) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return taskService.deleteTask(id, Long.parseLong(userId));
+        return taskService.deleteTask(id, Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()));
     }
 
     /**
@@ -88,8 +83,7 @@ public class TaskController {
      */
     @GetMapping("/search")
     public ResponseEntity<?> searchTasks(@RequestParam String keyword) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return taskService.searchTasks(keyword, Long.parseLong(userId));
+        return taskService.searchTasks(keyword, Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()));
     }
 
     /**
@@ -98,8 +92,7 @@ public class TaskController {
      */
     @GetMapping("/filter/status")
     public ResponseEntity<?> getTasksByStatus(@RequestParam String status) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return taskService.getTasksByStatus(Long.parseLong(userId), status);
+        return taskService.getTasksByStatus(Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()), status);
     }
 
     /**
@@ -108,8 +101,7 @@ public class TaskController {
      */
     @GetMapping("/filter/priority")
     public ResponseEntity<?> getTasksByPriority(@RequestParam String priority) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return taskService.getTasksByPriority(Long.parseLong(userId), priority);
+        return taskService.getTasksByPriority(Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()), priority);
     }
 
     /**
@@ -118,8 +110,7 @@ public class TaskController {
      */
     @GetMapping("/overdue")
     public ResponseEntity<?> getOverdueTasks() {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return taskService.getOverdueTasks(Long.parseLong(userId));
+        return taskService.getOverdueTasks(Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()));
     }
 
     /**
@@ -128,8 +119,7 @@ public class TaskController {
      */
     @GetMapping("/by-category/{categoryId}")
     public ResponseEntity<?> getTasksByCategory(@PathVariable Long categoryId) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return taskService.getTasksByCategory(Long.parseLong(userId), categoryId);
+        return taskService.getTasksByCategory(Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()), categoryId);
     }
 
     /**
@@ -138,8 +128,7 @@ public class TaskController {
      */
     @GetMapping("/ai-suggested-order")
     public ResponseEntity<?> getAISuggestedOrder() {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return taskService.getAISuggestedOrder(Long.parseLong(userId));
+        return taskService.getAISuggestedOrder(Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()));
     }
 
     /**
@@ -150,8 +139,7 @@ public class TaskController {
     public ResponseEntity<?> getTaskStats(
             @RequestParam(defaultValue = "WEEK") String range,
             @RequestParam(defaultValue = "DUE_DATE") String basis) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return taskService.getTaskStats(Long.parseLong(userId), range, basis);
+        return taskService.getTaskStats(Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()), range, basis);
     }
 
     /**
@@ -161,8 +149,7 @@ public class TaskController {
     @GetMapping("/by-date")
     public ResponseEntity<?> getTasksByDate(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return taskService.getTasksByDate(Long.parseLong(userId), date);
+        return taskService.getTasksByDate(Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()), date);
     }
 
     /**
@@ -171,10 +158,9 @@ public class TaskController {
      */
     @GetMapping("/calendar")
     public ResponseEntity<?> getTasksCalendar(@RequestParam Integer month, @RequestParam Integer year) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = startDate.plusMonths(1).minusDays(1);
-        return taskService.getTasksCalendar(Long.parseLong(userId), startDate, endDate);
+        return taskService.getTasksCalendar(Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()), startDate, endDate);
     }
 
     /**
@@ -186,8 +172,7 @@ public class TaskController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String priority,
             @RequestParam(required = false) String status) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return taskService.searchTasksWithFilters(keyword, priority, status, Long.parseLong(userId));
+        return taskService.searchTasksWithFilters(keyword, priority, status, Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()));
     }
 
     /**
@@ -204,7 +189,6 @@ public class TaskController {
      */
     @PostMapping("/reorder")
     public ResponseEntity<?> reorderTasks(@RequestBody ReorderTaskRequest request) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return taskService.reorderTasks(Long.parseLong(userId), request);
+        return taskService.reorderTasks(Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName()), request);
     }
 }

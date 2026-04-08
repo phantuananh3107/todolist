@@ -1,12 +1,12 @@
 package com.example.demo.controller;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class HealthController {
@@ -50,7 +50,9 @@ public class HealthController {
             "GET /api/reminders/by-date?date=YYYY-MM-DD - Reminders by day (need token)",
             "GET /api/notifications/unread - Unread in-app notifications (need token)",
             "GET /api/notifications - All in-app notifications (need token)",
-            "PATCH /api/notifications/{id}/read - Mark notification as read (need token)"
+            "PATCH /api/notifications/{id}/read - Mark notification as read (need token)",
+            "PATCH /api/notifications/{id}/acknowledge - Action 'Toi da nho roi' (need token)",
+            "PATCH /api/notifications/{id}/snooze - Snooze by minutes/hours/days (need token)"
         });
         return ResponseEntity.ok(response);
     }

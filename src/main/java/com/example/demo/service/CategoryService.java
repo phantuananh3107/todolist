@@ -131,7 +131,7 @@ public class CategoryService {
                 .collect(Collectors.toList());
 
         // Build response DTO
-        var response = new java.util.LinkedHashMap<>();
+        java.util.LinkedHashMap<String, Object> response = new java.util.LinkedHashMap<>();
         response.put("id", category.getId());
         response.put("name", category.getName());
         response.put("isActive", category.getIsActive());
