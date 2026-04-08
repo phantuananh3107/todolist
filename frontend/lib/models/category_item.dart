@@ -1,15 +1,19 @@
 class CategoryItem {
-  CategoryItem({
-    required this.id,
-    required this.name,
-    required this.taskCount,
-    this.color = '#3B82F6',
-  });
+  CategoryItem({required this.id, required this.name, required this.taskCount, this.colorHex});
 
   final int id;
   final String name;
   final int taskCount;
-  final String color;
+  final String? colorHex;
+
+  CategoryItem copyWith({int? id, String? name, int? taskCount, String? colorHex}) {
+    return CategoryItem(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      taskCount: taskCount ?? this.taskCount,
+      colorHex: colorHex ?? this.colorHex,
+    );
+  }
 
   factory CategoryItem.fromJson(Map<String, dynamic> json) {
     final rawId = json['id'];
@@ -18,14 +22,11 @@ class CategoryItem {
     final rawCount = json['taskCount'];
     final taskCount = rawCount is int ? rawCount : int.tryParse((rawCount ?? '0').toString()) ?? 0;
 
-    final colorValue = json['color'] ?? '#3B82F6';
-    final color = colorValue.toString();
-
     return CategoryItem(
       id: id,
       name: (json['name'] ?? 'General').toString(),
       taskCount: taskCount,
-      color: color,
+      colorHex: json['colorHex']?.toString(),
     );
   }
 }

@@ -7,7 +7,6 @@ class TaskItem {
     required this.status,
     required this.category,
     required this.dueDate,
-    required this.isCompleted,
     this.categoryId,
   });
 
@@ -18,7 +17,6 @@ class TaskItem {
   final String status;
   final String category;
   final DateTime dueDate;
-  final bool isCompleted;
   final int? categoryId;
 
   factory TaskItem.fromJson(Map<String, dynamic> json) {
@@ -52,7 +50,6 @@ class TaskItem {
       category: categoryName,
       categoryId: categoryId,
       dueDate: DateTime.tryParse((json['dueDate'] ?? '').toString()) ?? DateTime.now(),
-      isCompleted: (json['status'] ?? '').toString() == 'DONE',
     );
   }
 }
