@@ -403,29 +403,31 @@ class ApiService {
     throw _httpError(response);
   }
 
-  static Future<List<Map<String, dynamic>>> fetchAdminStats() async {
-    final response = await http.get(Uri.parse('$baseUrl/api/admin/stats/tasks'), headers: await _headers());
+
+  static Future<Map<String, dynamic>> createAdminUser({
+    required String username,
+    required String email,
+    required String role,
+    required bool isActive,
+    String? password,
+    String? confirmPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/admin/users'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'username': username,
+        'email': email,
+        'role': role,
+        'isActive': isActive,
+        'password': password,
+        'confirmPassword': confirmPassword,
+      }),
+    );
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      final data = jsonDecode(response.body) as List<dynamic>;
-      return data.cast<Map<String, dynamic>>();
+      return jsonDecode(response.body) as Map<String, dynamic>;
     }
     throw _httpError(response);
-  }
-
-
-  static Future<void> softDeleteUser(int id) async {
-    final response = await http.patch(Uri.parse('$baseUrl/api/admin/users/$id/soft-delete'), headers: await _headers());
-    if (response.statusCode < 200 || response.statusCode >= 300) throw _httpError(response);
-  }
-
-  static Future<void> lockUser(int id) async {
-    final response = await http.patch(Uri.parse('$baseUrl/api/admin/users/$id/lock'), headers: await _headers());
-    if (response.statusCode < 200 || response.statusCode >= 300) throw _httpError(response);
-  }
-
-  static Future<void> unlockUser(int id) async {
-    final response = await http.patch(Uri.parse('$baseUrl/api/admin/users/$id/unlock'), headers: await _headers());
-    if (response.statusCode < 200 || response.statusCode >= 300) throw _httpError(response);
   }
 
   static Future<void> updateAdminUser(
@@ -458,6 +460,47 @@ class ApiService {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw _httpError(response);
     }
+  }
+
+  static Future<void> softDeleteTaskAdmin(int id) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/admin/tasks/$id/soft-delete'),
+      headers: await _headers(),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) throw _httpError(response);
+  }
+
+  static Future<void> softDeleteCategoryAdmin(int id) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/admin/categories/$id/soft-delete'),
+      headers: await _headers(),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) throw _httpError(response);
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchAdminStats() async {
+    final response = await http.get(Uri.parse('$baseUrl/api/admin/stats/tasks'), headers: await _headers());
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = jsonDecode(response.body) as List<dynamic>;
+      return data.cast<Map<String, dynamic>>();
+    }
+    throw _httpError(response);
+  }
+
+
+  static Future<void> softDeleteUser(int id) async {
+    final response = await http.patch(Uri.parse('$baseUrl/api/admin/users/$id/soft-delete'), headers: await _headers());
+    if (response.statusCode < 200 || response.statusCode >= 300) throw _httpError(response);
+  }
+
+  static Future<void> lockUser(int id) async {
+    final response = await http.patch(Uri.parse('$baseUrl/api/admin/users/$id/lock'), headers: await _headers());
+    if (response.statusCode < 200 || response.statusCode >= 300) throw _httpError(response);
+  }
+
+  static Future<void> unlockUser(int id) async {
+    final response = await http.patch(Uri.parse('$baseUrl/api/admin/users/$id/unlock'), headers: await _headers());
+    if (response.statusCode < 200 || response.statusCode >= 300) throw _httpError(response);
   }
 
   static List<ReminderItem> buildDemoReminders(List<TaskItem> tasks) {

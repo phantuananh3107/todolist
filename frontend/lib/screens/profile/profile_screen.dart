@@ -260,16 +260,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      SectionCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Gợi ý hoàn thiện hồ sơ', style: Theme.of(context).textTheme.titleLarge),
-                            const SizedBox(height: 6),
-                            Text('Ảnh đại diện, email và bảo mật tài khoản rõ ràng sẽ giúp bản demo của bạn chuyên nghiệp hơn.', style: Theme.of(context).textTheme.bodyMedium),
-                          ],
-                        ),
-                      ),
                       const SizedBox(height: 20),
                       FilledButton.icon(
                         onPressed: () async {

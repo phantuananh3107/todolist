@@ -151,6 +151,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ],
               ),
               const SizedBox(height: 18),
+              const SizedBox(height: 18),
               SectionCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,7 +181,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     const SizedBox(height: 10),
                     _HealthRow(label: 'Category đang dùng', value: _categoryCount, tone: const Color(0xFFF2EFFF), color: AppColors.purple),
                     const SizedBox(height: 10),
-                    _HealthRow(label: 'Action admin chưa nối backend', value: 3, tone: const Color(0xFFFFECEA), color: AppColors.primaryDark),
+                    _HealthRow(label: 'Admin tools sẵn sàng', value: 4, tone: const Color(0xFFFFECEA), color: AppColors.primaryDark),
                   ],
                 ),
               ),
@@ -189,13 +190,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
-                    Text('Ghi chú triển khai'),
+                    Text('Điểm nhấn quản trị'),
                     SizedBox(height: 12),
-                    _AdminTodoRow(text: 'Mình đang để giao diện edit user theo figma trước. Phần lưu xuống backend sẽ nối sau.'),
+                    _AdminTodoRow(text: 'Theo dõi tổng quan hệ thống, số lượng người dùng và tình trạng hoạt động.'),
                     SizedBox(height: 10),
-                    _AdminTodoRow(text: 'Phần reset password từ admin cần API riêng nên hiện mới ở mức thao tác minh họa.'),
+                    _AdminTodoRow(text: 'Quản lý người dùng theo từng tài khoản để xem task, category và thao tác chi tiết.'),
                     SizedBox(height: 10),
-                    _AdminTodoRow(text: 'Phần xóa tài khoản vẫn để note trước để tránh đụng nhầm dữ liệu lúc demo.'),
+                    _AdminTodoRow(text: 'Khóa, chỉnh sửa hoặc vô hiệu hóa tài khoản ngay trong luồng quản trị.'),
                   ],
                 ),
               ),

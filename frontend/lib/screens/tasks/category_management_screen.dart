@@ -47,7 +47,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
         titlePadding: const EdgeInsets.fromLTRB(24, 22, 16, 6),
         title: Row(
           children: [
-            Expanded(child: Text(item == null ? 'Add New Category' : 'Edit Category')),
+            Expanded(child: Text(item == null ? 'Thêm category mới' : 'Sửa category')),
             IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded)),
           ],
         ),
@@ -204,16 +204,17 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
         return false;
       },
       child: Scaffold(
-        appBar: AppBar(title: const Text('Manage Categories')),
+        appBar: AppBar(title: const Text('Quản lý category')),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _saving ? null : _createCategory,
           icon: const Icon(Icons.add_rounded),
-          label: const Text('Add New Category'),
+          label: const Text('Thêm category mới'),
         ),
         body: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
           children: [
-            const ScreenHeader(title: 'Manage Categories', subtitle: 'Danh mục công việc', icon: Icons.folder_open_rounded),
+            const ScreenHeader(title: 'Quản lý category', subtitle: 'Danh mục công việc', icon: Icons.folder_open_rounded),
             const SizedBox(height: 16),
             if (_categories.isEmpty)
               const EmptyStateCard(icon: Icons.folder_off_rounded, title: 'Chưa có category', message: 'Thêm category để sắp xếp công việc.')

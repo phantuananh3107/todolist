@@ -84,8 +84,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     return items;
   }
 
-  void _openUserDetail(Map<String, dynamic> user) {
-    Navigator.of(context).push(
+  Future<void> _openCreateUser() async {
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const _EditUserScreen()),
+    );
+    if (created == true) {
+      await _load();
+    }
+  }
+
+  Future<void> _openUserDetail(Map<String, dynamic> user) async {
+    final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => _UserDetailScreen(
           user: user,
@@ -94,6 +103,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         ),
       ),
     );
+    if (changed == true) {
+      await _load();
+    }
   }
 
   @override
@@ -102,16 +114,26 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final active = _users.where((e) => e['isActive'] == true).length;
     final locked = _users.where((e) => e['isActive'] != true).length;
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openCreateUser,
+        backgroundColor: AppColors.primary,
+        icon: const Icon(Icons.person_add_alt_1_rounded),
+        label: const Text('Tạo user'),
+      ),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
           children: [
-            const ScreenHeader(
+            ScreenHeader(
               eyebrow: 'Admin',
               title: 'User Management',
-              subtitle: 'Quản lý tài khoản người dùng, chỉnh sửa thông tin, khóa hoặc vô hiệu hóa tài khoản trực tiếp từ đây.',
+              subtitle: 'Quản lý tài khoản người dùng, tạo user mới, chỉnh sửa thông tin, khóa hoặc vô hiệu hóa tài khoản.',
               icon: Icons.people_alt_rounded,
+              trailing: Container(
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: AppColors.softShadow),
+                child: IconButton(onPressed: _openCreateUser, icon: const Icon(Icons.person_add_alt_1_rounded)),
+              ),
             ),
             const SizedBox(height: 18),
             TextField(
@@ -147,15 +169,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               EmptyStateCard(
                 icon: Icons.group_off_rounded,
                 title: 'Không có tài khoản phù hợp',
-                message: 'Mình chưa thấy user nào khớp với bộ lọc hiện tại.',
-                actionLabel: 'Xóa bộ lọc',
-                onAction: () {
-                  setState(() {
-                    _filterIndex = 0;
-                    _searchController.clear();
-                  });
-                  _load();
-                },
+                message: 'Không có tài khoản nào khớp với bộ lọc hiện tại.',
+                actionLabel: 'Tạo user',
+                onAction: _openCreateUser,
               )
             else ...[
               ...visibleUsers.map((user) => Padding(
@@ -168,17 +184,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     ),
                   )),
               const SizedBox(height: 10),
-              SectionCard(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
-                  Text('Ghi chú quản trị'),
-                  SizedBox(height: 12),
-                  _TodoLine(text: 'Chỉnh sửa hồ sơ người dùng đã nối backend.'),
-                  SizedBox(height: 8),
-                  _TodoLine(text: 'Khóa/mở khóa và vô hiệu hóa tài khoản đang chạy với backend hiện tại.'),
-                  SizedBox(height: 8),
-                  _TodoLine(text: 'Xóa tài khoản đang dùng soft delete để an toàn khi demo.'),
-                ]),
-              ),
             ],
           ],
         ),
@@ -243,6 +248,7 @@ class _UserCard extends StatelessWidget {
                     runSpacing: 8,
                     children: [
                       _Tag(text: '$taskCount tasks', background: const Color(0xFFEAF1FF), color: AppColors.info),
+                      _Tag(text: (user['role'] ?? 'USER').toString(), background: const Color(0xFFF4EEFF), color: AppColors.purple),
                       _Tag(text: isActive ? 'Hoạt động' : 'Đã khóa', background: isActive ? const Color(0xFFEAF8F0) : const Color(0xFFFFECEA), color: isActive ? AppColors.success : AppColors.danger),
                     ],
                   ),
@@ -341,16 +347,43 @@ class _UserDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _ActionTile(
-            icon: Icons.restart_alt_rounded,
-            title: 'Reset Password',
-            subtitle: 'Phần reset mật khẩu mình cần backend riêng nên đang để note trước.',
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Phần reset mật khẩu sẽ nối backend sau.'))),
+            icon: Icons.task_alt_rounded,
+            title: 'Xem task của user',
+            subtitle: 'Xem chi tiết và xóa task trong phạm vi tài khoản này.',
+            onTap: () async {
+              final changed = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => _UserTasksScreen(user: user, onChanged: onChanged),
+                ),
+              );
+              if (changed == true && context.mounted) {
+                await onChanged();
+                Navigator.pop(context, true);
+              }
+            },
+          ),
+          const SizedBox(height: 12),
+          _ActionTile(
+            icon: Icons.category_rounded,
+            title: 'Xem category của user',
+            subtitle: 'Xem category và xóa category trong phạm vi tài khoản này.',
+            onTap: () async {
+              final changed = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => _UserCategoriesScreen(user: user, onChanged: onChanged),
+                ),
+              );
+              if (changed == true && context.mounted) {
+                await onChanged();
+                Navigator.pop(context, true);
+              }
+            },
           ),
           const SizedBox(height: 12),
           _ActionTile(
             icon: isActive ? Icons.lock_rounded : Icons.lock_open_rounded,
             title: isActive ? 'Lock User Account' : 'Unlock User Account',
-            subtitle: isActive ? 'Thao tác này đang chạy thật với backend hiện tại.' : 'Thao tác này đang chạy thật với backend hiện tại.',
+            subtitle: 'Thao tác này đang chạy thật với backend hiện tại.',
             onTap: () async {
               await onToggleLock();
               if (context.mounted) Navigator.pop(context);
@@ -399,6 +432,447 @@ class _UserDetailScreen extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _UserTasksScreen extends StatefulWidget {
+  const _UserTasksScreen({required this.user, required this.onChanged});
+
+  final Map<String, dynamic> user;
+  final Future<void> Function() onChanged;
+
+  @override
+  State<_UserTasksScreen> createState() => _UserTasksScreenState();
+}
+
+class _UserTasksScreenState extends State<_UserTasksScreen> {
+  bool _loading = true;
+  List<Map<String, dynamic>> _tasks = [];
+  String _username = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final stats = await ApiService.fetchAdminStats();
+      final userIdRaw = widget.user['id'];
+      final userId = userIdRaw is int ? userIdRaw : int.tryParse(userIdRaw.toString());
+      final found = stats.cast<Map<String, dynamic>>().firstWhere((u) {
+        final idRaw = u['id'];
+        final id = idRaw is int ? idRaw : int.tryParse(idRaw.toString());
+        return id == userId;
+      }, orElse: () => widget.user);
+      final tasks = <Map<String, dynamic>>[];
+      for (final category in (found['categories'] as List<dynamic>? ?? const [])) {
+        final cat = Map<String, dynamic>.from(category as Map);
+        for (final task in (cat['tasks'] as List<dynamic>? ?? const [])) {
+          final t = Map<String, dynamic>.from(task as Map);
+          t['categoryName'] = cat['name'];
+          tasks.add(t);
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        _username = (found['username'] ?? '').toString();
+        _tasks = tasks;
+        _loading = false;
+      });
+    } catch (e) {
+      if (ApiService.isUnauthorized(e)) {
+        if (!mounted) return;
+        await handleUnauthorized(context);
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không tải được task của user.')));
+    }
+  }
+
+  Future<void> _deleteTask(Map<String, dynamic> task) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Xóa task?'),
+        content: Text('Task "${(task['title'] ?? '').toString()}" sẽ bị xóa mềm.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Hủy')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Xóa')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      final idRaw = task['id'];
+      final id = idRaw is int ? idRaw : int.tryParse(idRaw.toString());
+      if (id == null) throw Exception('Thiếu id task');
+      await ApiService.softDeleteTaskAdmin(id);
+      await widget.onChanged();
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã xóa task.')));
+    } catch (e) {
+      if (ApiService.isUnauthorized(e)) {
+        await handleUnauthorized(context);
+        return;
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể xóa task.')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Task của user')),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text(_username.isEmpty ? 'Danh sách task' : 'Task của $_username', style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 8),
+            Text('Xem chi tiết và xóa task trong phạm vi tài khoản này.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.subText)),
+            const SizedBox(height: 16),
+            if (_loading) const Padding(padding: EdgeInsets.symmetric(vertical: 80), child: Center(child: CircularProgressIndicator()))
+            else if (_tasks.isEmpty) const EmptyStateCard(icon: Icons.task_alt_outlined, title: 'Chưa có task', message: 'Người dùng này chưa có task nào.')
+            else ..._tasks.map((task) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: SectionCard(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(child: Text((task['title'] ?? '').toString(), style: Theme.of(context).textTheme.titleMedium)),
+                    _Tag(text: (task['status'] ?? 'TODO').toString(), background: const Color(0xFFFFF2EA), color: AppColors.primaryDark),
+                  ]),
+                  const SizedBox(height: 8),
+                  Text((task['description'] ?? 'Không có mô tả').toString(), style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.subText)),
+                  const SizedBox(height: 10),
+                  Wrap(spacing: 8, runSpacing: 8, children: [
+                    _Tag(text: (task['categoryName'] ?? 'Uncategorized').toString(), background: const Color(0xFFF4EEFF), color: AppColors.purple),
+                    _Tag(text: (task['priority'] ?? 'MEDIUM').toString(), background: const Color(0xFFEAF1FF), color: AppColors.info),
+                    if ((task['dueDate'] ?? '').toString().isNotEmpty) _Tag(text: (task['dueDate']).toString(), background: const Color(0xFFEAF8F0), color: AppColors.success),
+                  ]),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+                      onPressed: () => _deleteTask(task),
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      label: const Text('Xóa task'),
+                    ),
+                  ),
+                ]),
+              ),
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UserCategoriesScreen extends StatefulWidget {
+  const _UserCategoriesScreen({required this.user, required this.onChanged});
+
+  final Map<String, dynamic> user;
+  final Future<void> Function() onChanged;
+
+  @override
+  State<_UserCategoriesScreen> createState() => _UserCategoriesScreenState();
+}
+
+class _UserCategoriesScreenState extends State<_UserCategoriesScreen> {
+  bool _loading = true;
+  List<Map<String, dynamic>> _categories = [];
+  String _username = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final stats = await ApiService.fetchAdminStats();
+      final userIdRaw = widget.user['id'];
+      final userId = userIdRaw is int ? userIdRaw : int.tryParse(userIdRaw.toString());
+      final found = stats.cast<Map<String, dynamic>>().firstWhere((u) {
+        final idRaw = u['id'];
+        final id = idRaw is int ? idRaw : int.tryParse(idRaw.toString());
+        return id == userId;
+      }, orElse: () => widget.user);
+      final categories = (found['categories'] as List<dynamic>? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      if (!mounted) return;
+      setState(() {
+        _username = (found['username'] ?? '').toString();
+        _categories = categories;
+        _loading = false;
+      });
+    } catch (e) {
+      if (ApiService.isUnauthorized(e)) {
+        if (!mounted) return;
+        await handleUnauthorized(context);
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không tải được category của user.')));
+    }
+  }
+
+  Future<void> _deleteCategory(Map<String, dynamic> category) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Xóa category?'),
+        content: Text('Category "${(category['name'] ?? '').toString()}" sẽ bị xóa mềm.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Hủy')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Xóa')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      final idRaw = category['id'];
+      final id = idRaw is int ? idRaw : int.tryParse(idRaw.toString());
+      if (id == null) throw Exception('Thiếu id category');
+      await ApiService.softDeleteCategoryAdmin(id);
+      await widget.onChanged();
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã xóa category.')));
+    } catch (e) {
+      if (ApiService.isUnauthorized(e)) {
+        await handleUnauthorized(context);
+        return;
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể xóa category.')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Category của user')),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text(_username.isEmpty ? 'Danh sách category' : 'Category của $_username', style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 8),
+            Text('Xem category và các task liên quan trong phạm vi tài khoản này.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.subText)),
+            const SizedBox(height: 16),
+            if (_loading) const Padding(padding: EdgeInsets.symmetric(vertical: 80), child: Center(child: CircularProgressIndicator()))
+            else if (_categories.isEmpty) const EmptyStateCard(icon: Icons.category_outlined, title: 'Chưa có category', message: 'Người dùng này chưa tạo category nào.')
+            else ..._categories.map((category) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: SectionCard(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(child: Text((category['name'] ?? '').toString(), style: Theme.of(context).textTheme.titleMedium)),
+                    _Tag(text: '${(category['taskCount'] ?? 0)} task', background: const Color(0xFFEAF1FF), color: AppColors.info),
+                  ]),
+                  const SizedBox(height: 10),
+                  ...((category['tasks'] as List<dynamic>? ?? const []).take(3).map((task) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(children: [
+                      const Icon(Icons.task_alt_rounded, size: 16, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(((task as Map)['title'] ?? '').toString())),
+                    ]),
+                  ))),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+                      onPressed: () => _deleteCategory(category),
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      label: const Text('Xóa category'),
+                    ),
+                  ),
+                ]),
+              ),
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EditUserScreen extends StatefulWidget {
+  const _EditUserScreen({this.user});
+
+  final Map<String, dynamic>? user;
+
+  @override
+  State<_EditUserScreen> createState() => _EditUserScreenState();
+}
+
+class _EditUserScreenState extends State<_EditUserScreen> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _usernameController;
+  late final TextEditingController _emailController;
+  late final TextEditingController _passwordController;
+  late final TextEditingController _confirmPasswordController;
+  late String _role;
+  late bool _isActive;
+  bool _saving = false;
+
+  bool get _isCreate => widget.user == null;
+
+  @override
+  void initState() {
+    super.initState();
+    _usernameController = TextEditingController(text: (widget.user?['username'] ?? '').toString());
+    _emailController = TextEditingController(text: (widget.user?['email'] ?? '').toString());
+    _passwordController = TextEditingController();
+    _confirmPasswordController = TextEditingController();
+    _role = ((widget.user?['role'] ?? 'USER').toString()).toUpperCase();
+    _isActive = widget.user?['isActive'] == true || _isCreate;
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    try {
+      if (_isCreate) {
+        await ApiService.createAdminUser(
+          username: _usernameController.text.trim(),
+          email: _emailController.text.trim(),
+          role: _role,
+          isActive: _isActive,
+          password: _passwordController.text.trim(),
+          confirmPassword: _confirmPasswordController.text.trim(),
+        );
+      } else {
+        final idRaw = widget.user?['id'];
+        final id = idRaw is int ? idRaw : int.tryParse(idRaw.toString());
+        if (id == null) throw Exception('Thiếu id người dùng');
+        await ApiService.updateAdminUser(
+          id,
+          username: _usernameController.text.trim(),
+          email: _emailController.text.trim(),
+          role: _role,
+          isActive: _isActive,
+          password: _passwordController.text.trim().isEmpty ? null : _passwordController.text.trim(),
+          confirmPassword: _confirmPasswordController.text.trim().isEmpty ? null : _confirmPasswordController.text.trim(),
+        );
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_isCreate ? 'Đã tạo user mới.' : 'Đã cập nhật user.')),
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không thể lưu user: $e')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(_isCreate ? 'Tạo người dùng' : 'Chỉnh sửa người dùng')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _usernameController,
+                decoration: const InputDecoration(labelText: 'Tên người dùng'),
+                validator: (value) => value == null || value.trim().isEmpty ? 'Vui lòng nhập tên người dùng' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(labelText: 'Email'),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) return 'Vui lòng nhập email';
+                  if (!value.contains('@')) return 'Email không hợp lệ';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _role,
+                decoration: const InputDecoration(labelText: 'Vai trò'),
+                items: const [
+                  DropdownMenuItem(value: 'USER', child: Text('USER')),
+                  DropdownMenuItem(value: 'ADMIN', child: Text('ADMIN')),
+                ],
+                onChanged: (value) { if (value != null) setState(() => _role = value); },
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Kích hoạt tài khoản'),
+                value: _isActive,
+                onChanged: (value) => setState(() => _isActive = value),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: InputDecoration(labelText: _isCreate ? 'Mật khẩu' : 'Mật khẩu mới (không bắt buộc)'),
+                validator: (value) {
+                  if (_isCreate && (value == null || value.trim().isEmpty)) {
+                    return 'Vui lòng nhập mật khẩu';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _confirmPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Xác nhận mật khẩu'),
+                validator: (value) {
+                  final pwd = _passwordController.text.trim();
+                  if (pwd.isNotEmpty && (value == null || value.trim() != pwd)) {
+                    return 'Xác nhận mật khẩu không khớp';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _saving ? null : _save,
+                  child: Text(_saving ? 'Đang lưu...' : (_isCreate ? 'Tạo user' : 'Lưu thay đổi')),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -495,188 +969,6 @@ class _Tag extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(999)),
       child: Text(text, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color, fontWeight: FontWeight.w700)),
-    );
-  }
-}
-
-class _TodoLine extends StatelessWidget {
-  const _TodoLine({required this.text});
-  final String text;
-  @override
-  Widget build(BuildContext context) {
-    return Row(children: [
-      Container(width: 7, height: 7, decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle)),
-      const SizedBox(width: 10),
-      Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.text))),
-    ]);
-  }
-}
-
-
-class _EditUserScreen extends StatefulWidget {
-  final Map<String, dynamic> user;
-
-  const _EditUserScreen({required this.user});
-
-  @override
-  State<_EditUserScreen> createState() => _EditUserScreenState();
-}
-
-class _EditUserScreenState extends State<_EditUserScreen> {
-  final _formKey = GlobalKey<FormState>();
-
-  late final TextEditingController _usernameController;
-  late final TextEditingController _emailController;
-  late final TextEditingController _passwordController;
-  late final TextEditingController _confirmPasswordController;
-
-  late String _role;
-  late bool _isActive;
-
-  bool _saving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _usernameController = TextEditingController(
-      text: (widget.user['username'] ?? '').toString(),
-    );
-    _emailController = TextEditingController(
-      text: (widget.user['email'] ?? '').toString(),
-    );
-    _passwordController = TextEditingController();
-    _confirmPasswordController = TextEditingController();
-    _role = (widget.user['role'] ?? 'USER').toString();
-    _isActive = widget.user['isActive'] == true;
-  }
-
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _saving = true);
-    try {
-      await ApiService.updateAdminUser(
-        (widget.user['id'] as num).toInt(),
-        username: _usernameController.text.trim(),
-        email: _emailController.text.trim(),
-        role: _role,
-        isActive: _isActive,
-        password: _passwordController.text.trim().isEmpty ? null : _passwordController.text.trim(),
-        confirmPassword: _confirmPasswordController.text.trim().isEmpty ? null : _confirmPasswordController.text.trim(),
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cập nhật người dùng thành công')),
-      );
-      Navigator.pop(context, true);
-    } catch (e) {
-      if (ApiService.isUnauthorized(e)) {
-        await handleUnauthorized(context);
-        return;
-      }
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể cập nhật user: $e')),
-      );
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Chỉnh sửa người dùng')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(
-                controller: _usernameController,
-                decoration: const InputDecoration(labelText: 'Tên người dùng'),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Vui lòng nhập tên người dùng';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Vui lòng nhập email';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Email không hợp lệ';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _role,
-                decoration: const InputDecoration(labelText: 'Vai trò'),
-                items: const [
-                  DropdownMenuItem(value: 'USER', child: Text('USER')),
-                  DropdownMenuItem(value: 'ADMIN', child: Text('ADMIN')),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _role = value);
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Kích hoạt tài khoản'),
-                value: _isActive,
-                onChanged: (value) => setState(() => _isActive = value),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Mật khẩu mới (không bắt buộc)'),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _confirmPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Xác nhận mật khẩu mới'),
-                validator: (value) {
-                  if (_passwordController.text.trim().isNotEmpty &&
-                      value!.trim() != _passwordController.text.trim()) {
-                    return 'Xác nhận mật khẩu không khớp';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: Text(_saving ? 'Đang lưu...' : 'Lưu thay đổi'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
