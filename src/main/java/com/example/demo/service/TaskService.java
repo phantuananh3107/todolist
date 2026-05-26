@@ -29,9 +29,31 @@ import java.util.Optional;
 import java.util.stream.Stream;
 import java.util.stream.Collectors;
 
+/**
+ * ========================================
+ * TaskService - Dịch vụ quản lý công việc
+ * ========================================
+ * 
+ * Chức năng chính:
+ * 1. CRUD Task (Create, Read, Update, Delete)
+ * 2. Search task (search by title + description)
+ * 3. Filter task (by status, priority, date)
+ * 4. Reorder task (sắp xếp ưu tiên)
+ * 5. Statistics & Analytics
+ * 
+ * Business Rules:
+ * - Không được tạo 2 task trùng tên trong cùng category
+ * - Xóa mềm (soft delete): set isActive = false
+ * - Chỉ user sở hữu mới có quyền modify
+ * - Chỉ lấy task isActive = true
+ * 
+ * @author Phan Tuấn Anh
+ * @version 1.0
+ */
 @Service
 public class TaskService {
 
+    // ==================== DEPENDENCIES ====================
     @Autowired
     private TaskRepository taskRepository;
 
@@ -44,8 +66,31 @@ public class TaskService {
     @Autowired
     private OpenAIService openAIService;
 
+    // ==================== CREATE TASK ====================
+    
     /**
-     * Tạo công việc mới
+     * Tạo công việc mới cho user
+     * 
+     * Business Logic:
+     * 1. Validate title không rỗng
+     * 2. Check user tồn tại
+     * 3. Check category tồn tại (nếu có)
+     * 4. Kiểm tra duplicate title trong category
+     * 5. Set default values (isActive=true, createdAt=now)
+     * 6. Save vào database
+     * 
+     * Validation:
+     * - Title: required, không rỗng
+     * - Category: optional
+     * - Priority: optional
+     * - Status: optional (default=TODO)
+     * 
+     * @param userId ID của user hiện tại
+     * @param request CreateTaskRequest (title, description, priority, categoryId, status, dueDate)
+     * @return ResponseEntity với TaskResponseDTO hoặc error message
+     * @throws HttpStatus.BAD_REQUEST nếu title rỗng hoặc duplicate
+     * @throws HttpStatus.NOT_FOUND nếu user/category không tồn tại
+     * @throws HttpStatus.FORBIDDEN nếu category không thuộc user
      */
     public ResponseEntity<?> createTask(Long userId, CreateTaskRequest request) {
         // Validate
@@ -248,8 +293,39 @@ public class TaskService {
         return ResponseEntity.ok(result);
     }
 
+    // ==================== SEARCH & FILTER TASKS ====================
+    
     /**
-     * Tìm kiếm công việc với các tùy chọn filter (priority, status)
+     * Tìm kiếm và lọc công việc với multiple criteria
+     * 
+     * Chức năng:
+     * - Tìm kiếm theo keyword (search trong title - case insensitive)
+     * - Lọc theo priority (LOW, MEDIUM, HIGH)
+     * - Lọc theo status (TODO, DOING, DONE, OVERDUE)
+     * - Hỗ trợ combine multiple filters
+     * 
+     * Logic:
+     * 1. Lấy toàn bộ task active của user
+     * 2. Filter theo keyword (nếu có)
+     *    - Tìm trong title
+     *    - Case-insensitive (toLowerCase)
+     * 3. Filter theo priority (nếu có)
+     *    - Enum validation
+     *    - Throw BAD_REQUEST nếu invalid
+     * 4. Filter theo status (nếu có)
+     *    - Enum validation
+     *    - Throw BAD_REQUEST nếu invalid
+     * 5. Map to DTO và return
+     * 
+     * Example:
+     * GET /api/tasks/advanced-search?keyword=báo&priority=HIGH&status=TODO
+     * 
+     * @param keyword Từ khóa tìm kiếm (optional, search in title)
+     * @param priority Ưu tiên (optional, valid: LOW/MEDIUM/HIGH)
+     * @param status Trạng thái (optional, valid: TODO/DOING/DONE/OVERDUE)
+     * @param userId ID của user hiện tại
+     * @return ResponseEntity với List<TaskResponseDTO> hoặc error message
+     * @throws HttpStatus.BAD_REQUEST nếu priority/status invalid
      */
     public ResponseEntity<?> searchTasksWithFilters(String keyword, String priority, String status, Long userId) {
         List<Tasks> tasks = taskRepository.findByUserIdAndIsActiveTrueOrderByDueDateAsc(userId);

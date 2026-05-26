@@ -16,6 +16,30 @@ import '../tasks/task_detail_screen.dart';
 import 'category_management_screen.dart';
 import 'task_form_screen.dart';
 
+/// =====================================================
+/// TasksScreen - Màn hình quản lý danh sách công việc
+/// =====================================================
+///
+/// Chức năng chính:
+/// 1. Hiển thị danh sách task
+/// 2. Lọc theo category
+/// 3. Tìm kiếm theo title/description
+/// 4. Filter theo priority, status
+/// 5. Sắp xếp tasks
+/// 6. Tạo, sửa, xóa task
+/// 7. Quản lý categories
+///
+/// State:
+/// - tasks: Danh sách tất cả tasks
+/// - categories: Danh sách categories
+/// - selectedCategory: Category được chọn
+/// - _searchQuery: Từ khóa tìm kiếm
+/// - _priorityFilter: Lọc theo priority (HIGH, MEDIUM, LOW)
+/// - _statusFilter: Lọc theo status (TODO, DOING, DONE)
+/// - _sortMode: Cách sắp xếp (deadline_asc, priority_desc, etc.)
+///
+/// @author Phan Tuấn Anh
+/// @version 1.0
 class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key});
 
@@ -24,27 +48,53 @@ class TasksScreen extends StatefulWidget {
 }
 
 class _TasksScreenState extends State<TasksScreen> {
+  /// ===== STATE VARIABLES =====
+
+  /// Danh sách tất cả tasks từ API
   List<TaskItem> tasks = [];
+
+  /// Danh sách categories của user
   List<CategoryItem> categories = [];
+
+  /// Category được chọn hiện tại (default: 'All')
   String selectedCategory = 'All';
+
+  /// Flag loading state
   bool loading = true;
 
+  // ===== SEARCH & FILTER VARIABLES =====
+
+  /// Controller cho search input
   final _searchController = TextEditingController();
+
+  /// Từ khóa tìm kiếm (case-insensitive, search trong title + description)
   String _searchQuery = '';
+
+  /// Filter priority: null (tất cả), 'LOW', 'MEDIUM', 'HIGH'
   String? _priorityFilter;
+
+  /// Filter status: null (tất cả), 'TODO', 'DOING', 'DONE'
   String? _statusFilter;
+
+  /// Sắp xếp mode:
+  /// - 'deadline_asc': Hạn chót gần nhất
+  /// - 'priority_desc': Ưu tiên cao nhất
+  /// - 'created_desc': Mới tạo nhất
   String _sortMode = 'deadline_asc';
 
   @override
   void initState() {
     super.initState();
+    // Lắng nghe refresh events từ EventBus
     AppRefreshBus.tasks.addListener(_load);
     AppRefreshBus.categories.addListener(_load);
+    // Load dữ liệu khi khởi tạo
     _load();
   }
 
   @override
   void dispose() {
+    // Clean up listeners
     AppRefreshBus.tasks.removeListener(_load);
     AppRefreshBus.categories.removeListener(_load);
     _searchController.dispose();
@@ -217,6 +267,12 @@ class _TasksScreenState extends State<TasksScreen> {
                 controller: controller,
                 autofocus: true,
                 decoration: const InputDecoration(hintText: 'Nhập tên category mới'),
+                onSubmitted: (_) {
+                  final finalName = controller.text.trim();
+                  if (finalName.isNotEmpty) {
+                    Navigator.pop(context, {'name': finalName, 'colorHex': selected});
+                  }
+                },
               ),
               const SizedBox(height: 16),
               Text('Màu category', style: Theme.of(context).textTheme.titleMedium),

@@ -9,9 +9,29 @@ import '../../widgets/empty_state_card.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/section_card.dart';
 
+/// ======================================================
+/// CategoryManagementScreen - Quản lý danh mục (Category)
+/// ======================================================
+///
+/// Chức năng:
+/// 1. Hiển thị danh sách categories
+/// 2. Tạo category mới
+/// 3. Sửa category (tên + màu)
+/// 4. Xóa category (soft delete + cascade)
+/// 5. Chọn màu cho category
+///
+/// Business Rules:
+/// - Không được tạo 2 category trùng tên
+/// - Xóa category → xóa mềm all tasks trong đó
+/// - Chỉ user sở hữu mới có quyền modify
+/// - Category 'All' là default (không sửa/xóa)
+///
+/// @author Phan Tuấn Anh
+/// @version 1.0
 class CategoryManagementScreen extends StatefulWidget {
   const CategoryManagementScreen({super.key, required this.categories});
 
+  /// Danh sách categories truyền từ parent
   final List<CategoryItem> categories;
 
   @override
@@ -19,32 +39,58 @@ class CategoryManagementScreen extends StatefulWidget {
 }
 
 class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
+  /// ===== COLOR PALETTE =====
+  /// Các màu sắc được cung cấp cho user chọn
   static const _palette = [
-    '#FF5C54',
-    '#3B82F6',
-    '#22C55E',
-    '#F97316',
-    '#A855F7',
+    '#FF5C54',  // Red
+    '#3B82F6',  // Blue
+    '#22C55E',  // Green
+    '#F97316',  // Orange
+    '#A855F7',  // Purple
   ];
 
+  /// ===== STATE VARIABLES =====
+
+  /// Danh sách categories (exclude 'All')
   late List<CategoryItem> _categories;
+
+  /// Flag: đang save data
   bool _saving = false;
+
+  /// Flag: có thay đổi chưa save
   bool _dirty = false;
 
   @override
   void initState() {
     super.initState();
+    // Lọc bỏ 'All' category (nó là special case)
     _categories = widget.categories.where((e) => e.name != 'All').toList();
   }
 
+  /// ========================================
+  /// Hiển thị dialog tạo/sửa category
+  /// ========================================
+  ///
+  /// Features:
+  /// - TextInput cho category name
+  /// - Color picker (palette)
+  /// - Validate: name không rỗng, không duplicate
+  ///
+  /// @param item Category để sửa (null = tạo mới)
+  /// @return Map<String, String>? {'name': ..., 'color': ...}
   Future<Map<String, String>?> _showCategoryDialog({CategoryItem? item}) async {
+    // TextController với giá trị cũ (nếu edit)
     final controller = TextEditingController(text: item?.name ?? '');
+
+    // Selected color (default = màu đầu tiên)
     String selected = item?.colorHex ?? _palette.first;
+
     return showDialog<Map<String, String>>(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         titlePadding: const EdgeInsets.fromLTRB(24, 22, 16, 6),
+        // Title: "Thêm category mới" hoặc "Sửa category"
         title: Row(
           children: [
             Expanded(child: Text(item == null ? 'Thêm category mới' : 'Sửa category')),
@@ -60,6 +106,12 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                 controller: controller,
                 autofocus: true,
                 decoration: const InputDecoration(labelText: 'Category Name', hintText: 'e.g. Personal, Work, Shopping'),
+                onSubmitted: (_) {
+                  final finalName = controller.text.trim();
+                  if (finalName.isNotEmpty) {
+                    Navigator.pop(context, {'name': finalName, 'colorHex': selected});
+                  }
+                },
               ),
               const SizedBox(height: 18),
               Text('Color Tag', style: Theme.of(context).textTheme.titleMedium),

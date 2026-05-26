@@ -12,27 +12,69 @@ import '../../utils/auth_navigation.dart';
 import '../../widgets/section_card.dart';
 import '../../widgets/soft_action_button.dart';
 
+/// =====================================================
+/// TaskFormScreen - Form tạo/sửa công việc (có AI suggest)
+/// =====================================================
+///
+/// Chức năng chính:
+/// 1. Tạo task mới hoặc sửa task cũ
+/// 2. Nhập: title, description, priority, status, dueDate
+/// 3. Chọn category
+/// 4. ✨ AI SUGGEST: Gợi ý category dựa vào description
+/// 5. Quản lý reminder/notification
+/// 6. Validation: title không rỗng, không duplicate
+///
+/// Flow:
+/// 1. User nhập title + description
+/// 2. User nhấn "AI Suggest" button
+/// 3. Call API: POST /api/categories/suggest
+/// 4. Backend gọi OpenAI API
+/// 5. Return top suggestions
+/// 6. Hiển thị suggestion dialog
+/// 7. User chọn một suggestion
+/// 8. Save task
+///
+/// @author Phan Tuấn Anh
+/// @version 1.0
 class TaskFormScreen extends StatefulWidget {
   const TaskFormScreen({super.key, this.existingTask, this.initialDate});
 
+  /// Task để sửa (null = tạo mới)
   final TaskItem? existingTask;
+
+  /// Ngày khởi tạo (nếu tạo từ calendar)
   final DateTime? initialDate;
 
   @override
-  State<TaskFormScreen> createState() => _TaskFormScreenState();
+  State<TaskFormScreenState> createState() => _TaskFormScreenState();
 }
 
 class _TaskFormScreenState extends State<TaskFormScreen> {
+  /// Form key để validate
   final _formKey = GlobalKey<FormState>();
 
+  /// ===== COLOR PALETTE =====
+  /// Các màu sắc cho category
   static const _palette = ['#FF5C54', '#3B82F6', '#22C55E', '#F97316', '#A855F7'];
 
+  /// ===== HELPER METHOD =====
+  /// Convert hex color string (#RRGGBB) to Color object
+  /// @param hex Hex color string (e.g., '#FF5C54')
+  /// @return Color object hoặc default color nếu invalid
   Color _categoryDotColor(String? hex) {
     final value = (hex ?? '').replaceAll('#', '');
     if (value.length == 6) return Color(int.parse('FF$value', radix: 16));
     return AppColors.primary;
   }
 
+  /// ========================================
+  /// Hiển thị dialog tạo category inline
+  /// ========================================
+  ///
+  /// Cho phép user tạo category mới
+  /// ngay trong form, nếu category hiện tại không phù hợp
+  ///
+  /// @return Map<String, String>? {'name': ..., 'color': ...}
   Future<Map<String, String>?> _showInlineCategoryDialog() async {
     final controller = TextEditingController();
     String selected = _palette.first;
@@ -85,7 +127,14 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
-          FilledButton(onPressed: () => Navigator.pop(context, {'name': controller.text.trim(), 'colorHex': selected}), child: const Text('Thêm')),
+          FilledButton(
+            onPressed: () {
+              final finalName = controller.text.trim();
+              if (finalName.isEmpty) return;
+              Navigator.pop(context, {'name': finalName, 'colorHex': selected});
+            },
+            child: const Text('Thêm'),
+          ),
         ],
       ),
     );
@@ -133,6 +182,21 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     super.dispose();
   }
 
+  /// ========================================
+  /// Load categories từ API
+  /// ========================================
+  ///
+  /// Chức năng:
+  /// - Fetch danh sách categories từ backend
+  /// - Handle error: Unauthorized (redirect to login)
+  /// - Fallback: Use demo categories nếu API fail
+  /// - Apply categories sau khi load
+  ///
+  /// Flow:
+  /// 1. Call ApiService.fetchCategories()
+  /// 2. If error 401 → handleUnauthorized()
+  /// 3. If other error → use demoCategories
+  /// 4. Call _applyCategories() để process
   Future<void> _loadCategories() async {
     try {
       final cats = await ApiService.fetchCategories();
@@ -149,6 +213,16 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     }
   }
 
+  /// ========================================
+  /// Load existing reminder khi edit task
+  /// ========================================
+  ///
+  /// Chức năng:
+  /// - Fetch reminders từ API
+  /// - Filter reminders của task hiện tại
+  /// - Populate _reminderTime, _reminderEnabled
+  ///
+  /// Note: Chỉ chạy khi widget.existingTask != null
   Future<void> _loadExistingReminder() async {
     if (widget.existingTask == null) return;
     try {
@@ -166,6 +240,19 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     } catch (_) {}
   }
 
+  /// ========================================
+  /// Sync reminder khi save task
+  /// ========================================
+  ///
+  /// Chức năng:
+  /// - Tạo/update/delete reminder dựa vào _reminderEnabled
+  /// - Nếu _reminderEnabled=true:
+  ///   * Create hoặc update reminder
+  ///   * Xóa extra reminders
+  /// - Nếu _reminderEnabled=false:
+  ///   * Xóa tất cả reminders của task
+  ///
+  /// @param taskId ID của task vừa save
   Future<void> _syncReminderForTask(int taskId) async {
     if (_reminderEnabled && _reminderTime != null) {
       if (_existingReminderId != null) {
@@ -206,6 +293,18 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     AppRefreshBus.bumpNotifications();
   }
 
+  /// ========================================
+  /// Process categories sau khi load
+  /// ========================================
+  ///
+  /// Chức năng:
+  /// 1. Filter bỏ 'All' category (special case)
+  /// 2. Set selected category (nếu edit):
+  ///    - Match by ID (ưu tiên)
+  ///    - Match by name (fallback)
+  /// 3. Trigger AI suggestion
+  ///
+  /// @param cats Danh sách categories từ API
   void _applyCategories(List<CategoryItem> cats) {
     _categories = cats.where((c) => c.name != 'All').toList();
     if (widget.existingTask != null) {
@@ -224,11 +323,39 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     if (mounted) setState(() {});
   }
 
+  /// ========================================
+  /// Schedule AI category suggestion
+  /// ========================================
+  ///
+  /// ✨ CHỨC NĂNG AI CLASSIFICATION ✨
+  ///
+  /// Quy trình:
+  /// 1. Cancel previous suggestion timer
+  /// 2. Combine title + description
+  /// 3. Wait 700ms (debounce - để user có thời gian nhập)
+  /// 4. Call ApiService.suggestCategory()
+  ///    - Send: title + description
+  ///    - Receive: {'categoryName': ..., 'matchPercentage': ..., 'reason': ...}
+  /// 5. Set state: _suggestedCategory, _suggestedMatch, _suggestedReason
+  /// 6. Fallback: Use local AI (nếu API fail)
+  ///
+  /// Local AI:
+  /// - Keyword matching
+  /// - Simple similarity algorithm
+  /// - No external API call
+  ///
+  /// Error handling:
+  /// - Try API suggestion first
+  /// - If fail → try local AI
+  /// - If both fail → show "Chưa có gợi ý"
   void _scheduleSuggestion() {
+    // Cancel previous timer để avoid multiple requests
     _suggestionDebounce?.cancel();
+
     final title = titleController.text.trim();
     final description = descriptionController.text.trim();
 
+    // Nếu chưa có category hoặc chưa nhập gì → clear suggestion
     if (_categories.isEmpty || (title.isEmpty && description.isEmpty)) {
       if (mounted) {
         setState(() {
@@ -241,10 +368,12 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       return;
     }
 
+    // Set loading state
     _suggestionDebounce = Timer(const Duration(milliseconds: 700), () async {
       if (!mounted) return;
       setState(() => _suggestingCategory = true);
       try {
+        // Call API để get AI suggestion
         final apiSuggestion = await ApiService.suggestCategory(
           description: [title, description].where((e) => e.isNotEmpty).join(' - '),
         );
@@ -264,9 +393,10 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
           return;
         }
       } catch (_) {
-        // fallback local below
+        // Fallback to local AI nếu API fail
       }
 
+      // Local AI fallback
       final local = localAiCategorySuggestion(title, description, _categories);
       if (!mounted) return;
       setState(() {
@@ -278,6 +408,15 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     });
   }
 
+  /// ========================================
+  /// Pick date & time for task
+  /// ========================================
+  ///
+  /// UI Flow:
+  /// 1. Show date picker
+  /// 2. Show time picker
+  /// 3. Update selectedDate
+  /// 4. Auto-set reminder 30min before
   Future<void> _pickDateTime() async {
     final pickedDate = await showDatePicker(
       context: context,
@@ -300,6 +439,13 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     });
   }
 
+  /// ========================================
+  /// Pick reminder date & time
+  /// ========================================
+  ///
+  /// Constraint:
+  /// - Reminder time phải <= due date/time
+  ///
   Future<void> _pickReminderTime() async {
     final initial = _reminderTime ?? selectedDate.subtract(const Duration(minutes: 30));
     final pickedDate = await showDatePicker(
@@ -320,6 +466,20 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     });
   }
 
+  /// ========================================
+  /// Thêm category inline (inside form)
+  /// ========================================
+  ///
+  /// Cho phép user tạo category mới
+  /// mà không cần rời khỏi task form
+  ///
+  /// Flow:
+  /// 1. Show category dialog
+  /// 2. Get name + color
+  /// 3. Call ApiService.createCategory()
+  /// 4. Add to _categories list
+  /// 5. Auto-select new category
+  /// 6. Trigger AI suggestion
   Future<void> _addCategoryInline() async {
     final data = await _showInlineCategoryDialog();
     final createdName = data?['name']?.trim() ?? '';
@@ -350,7 +510,27 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     }
   }
 
+  /// ========================================
+  /// Submit form - Save/Update task
+  /// ========================================
+  ///
+  /// Validation:
+  /// 1. Validate form (title required)
+  /// 2. Check category selected
+  ///
+  /// Flow:
+  /// 1. Build payload with task data
+  /// 2. If new → POST /api/tasks
+  ///    If edit → PATCH /api/tasks/{id}
+  /// 3. Sync reminder (create/update/delete)
+  /// 4. Trigger AppRefreshBus events
+  /// 5. Pop with success
+  ///
+  /// Error handling:
+  /// - 401 Unauthorized → redirect to login
+  /// - Other errors → show snackbar message
   Future<void> _submit() async {
+    // Validate form fields
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCategoryId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng chọn category.')));
@@ -369,15 +549,19 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
 
     try {
       if (widget.existingTask == null) {
+        // CREATE new task
         final createdTask = await ApiService.createTask(payload);
         await _syncReminderForTask(createdTask.id);
       } else {
+        // UPDATE existing task
         await ApiService.updateTask(widget.existingTask!.id, payload);
         await _syncReminderForTask(widget.existingTask!.id);
       }
       if (!mounted) return;
+      // Trigger refresh events
       AppRefreshBus.bumpTasks();
       AppRefreshBus.bumpNotifications();
+      // Return to previous screen
       Navigator.pop(context, true);
     } catch (e) {
       if (ApiService.isUnauthorized(e)) {
@@ -392,6 +576,20 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     }
   }
 
+  /// ========================================
+  /// Delete task
+  /// ========================================
+  ///
+  /// Soft delete:
+  /// - Backend: set isActive = false
+  /// - Not actually removed from database
+  /// - Can be recovered if needed
+  ///
+  /// Flow:
+  /// 1. Show confirmation dialog
+  /// 2. Call ApiService.deleteTask()
+  /// 3. Trigger refresh
+  /// 4. Pop screen
   Future<void> _deleteTask() async {
     if (widget.existingTask == null) return;
     final confirm = await showDialog<bool>(
@@ -424,11 +622,42 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     }
   }
 
+  /// ========================================
+  /// Build UI - Main form layout
+  /// ========================================
+  ///
+  /// Sections:
+  /// 1. AppBar (Header with title)
+  /// 2. Form - Basic Info (Title, Description)
+  /// 3. Section - AI Suggestion
+  /// 4. Section - Status & Priority
+  /// 5. Section - Category Selection
+  /// 6. Section - Reminder/Notification
+  /// 7. Button - Save/Create
+  ///
+  /// Features:
+  /// - Form validation (title required)
+  /// - Debounced AI suggestion
+  /// - Category picker with inline add
+  /// - Date/Time picker
+  /// - Reminder toggle & picker
+  /// - Delete button (for edit mode)
+  ///
+  /// UI Pattern:
+  /// - SectionCard: Container cho logical groups
+  /// - Gradients: Visual hierarchy
+  /// - DropdownButtonFormField: Category/Priority/Status
+  /// - InkWell + InputDecorator: DateTime picker style
   @override
   Widget build(BuildContext context) {
+    // Determine if edit or create mode
     final isEdit = widget.existingTask != null;
+
+    // Format date/time for display
     final dateText =
         '${selectedDate.day}/${selectedDate.month}/${selectedDate.year} · ${selectedDate.hour.toString().padLeft(2, '0')}:${selectedDate.minute.toString().padLeft(2, '0')}';
+
+    // Format reminder date/time for display
     final reminderText = _reminderTime == null
         ? 'Chưa đặt nhắc việc'
         : '${_reminderTime!.day}/${_reminderTime!.month}/${_reminderTime!.year} · ${_reminderTime!.hour.toString().padLeft(2, '0')}:${_reminderTime!.minute.toString().padLeft(2, '0')}';
@@ -437,6 +666,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       appBar: AppBar(
         title: Text(isEdit ? 'Chỉnh sửa task' : 'Tạo task mới'),
         actions: [
+          // Delete button - chỉ hiển thị khi edit
           if (isEdit)
             IconButton(
               onPressed: _deleteTask,
@@ -449,6 +679,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
           children: [
+            // ===== SECTION 1: TASK BASIC INFO =====
             SectionCard(
               gradient: const LinearGradient(
                 colors: [Color(0xFFFFFBFA), Colors.white],
@@ -458,19 +689,25 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Title
                   Text(isEdit ? 'Cập nhật thông tin công việc' : 'Thêm công việc mới', style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 8),
+                  // Subtitle
                   Text(
                     'Điền thông tin công việc, thời gian và danh mục để lưu vào kế hoạch của bạn.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 18),
+
+                  // Title input - REQUIRED
                   TextFormField(
                     controller: titleController,
                     validator: (value) => (value == null || value.trim().isEmpty) ? 'Tên task không được để trống' : null,
                     decoration: const InputDecoration(labelText: 'Tên công việc', prefixIcon: Icon(Icons.title_rounded)),
                   ),
                   const SizedBox(height: 16),
+
+                  // Description input - OPTIONAL (used for AI suggestion)
                   TextFormField(
                     controller: descriptionController,
                     maxLines: 4,
@@ -484,11 +721,14 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
               ),
             ),
             const SizedBox(height: 16),
+
+            // ===== SECTION 2: AI SUGGESTION =====
             SectionCard(
               gradient: const LinearGradient(colors: [Color(0xFFFFFBFF), Color(0xFFFFF4EF)]),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Header with AI icon
                   Row(
                     children: [
                       Container(
@@ -501,6 +741,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
+
+                  // AI suggestion status/message
                   Text(
                     _suggestedCategory == null
                         ? 'Nhập tiêu đề hoặc mô tả để AI gợi ý category phù hợp.'
@@ -508,6 +750,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 14),
+
+                  // Apply suggestion button
                   Row(
                     children: [
                       Expanded(
@@ -517,6 +761,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                           onPressed: _suggestedCategory == null
                               ? null
                               : () {
+                                  // Auto-select suggested category
                                   final match = _categories.where((e) => e.name.toLowerCase() == _suggestedCategory!.toLowerCase());
                                   if (match.isNotEmpty) {
                                     setState(() => _selectedCategoryId = match.first.id);
@@ -530,12 +775,16 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
               ),
             ),
             const SizedBox(height: 16),
+
+            // ===== SECTION 3: STATUS & PRIORITY =====
             SectionCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Trạng thái & ưu tiên', style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
+
+                  // Status dropdown
                   DropdownButtonFormField<String>(
                     value: status,
                     decoration: const InputDecoration(labelText: 'Trạng thái', prefixIcon: Icon(Icons.track_changes_rounded)),
@@ -547,6 +796,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                     onChanged: (value) => setState(() => status = value ?? 'TODO'),
                   ),
                   const SizedBox(height: 14),
+
+                  // Priority dropdown
                   DropdownButtonFormField<String>(
                     value: priority,
                     decoration: const InputDecoration(labelText: 'Mức ưu tiên', prefixIcon: Icon(Icons.flag_rounded)),
@@ -558,6 +809,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                     onChanged: (value) => setState(() => priority = value ?? 'MEDIUM'),
                   ),
                   const SizedBox(height: 14),
+
+                  // Date/Time picker
                   InkWell(
                     borderRadius: BorderRadius.circular(24),
                     onTap: _pickDateTime,
@@ -574,10 +827,13 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
               ),
             ),
             const SizedBox(height: 16),
+
+            // ===== SECTION 4: CATEGORY SELECTION =====
             SectionCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Header + Add button
                   Row(
                     children: [
                       Expanded(child: Text('Category', style: Theme.of(context).textTheme.titleLarge)),
@@ -591,6 +847,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
+
+                  // Category dropdown
                   DropdownButtonFormField<int>(
                     value: _selectedCategoryId,
                     decoration: const InputDecoration(labelText: 'Danh mục', prefixIcon: Icon(Icons.folder_open_rounded)),
@@ -599,6 +857,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                               value: category.id,
                               child: Row(
                                 children: [
+                                  // Color dot indicator
                                   Container(
                                     width: 12,
                                     height: 12,
@@ -619,10 +878,13 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
               ),
             ),
             const SizedBox(height: 16),
+
+            // ===== SECTION 5: REMINDER/NOTIFICATION =====
             SectionCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Header + Toggle
                   Row(
                     children: [
                       Expanded(child: Text('Reminder', style: Theme.of(context).textTheme.titleLarge)),
@@ -632,6 +894,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                       ),
                     ],
                   ),
+                  // Info text
                   Text(
                     isEdit
                         ? 'Chọn thời điểm nhắc việc ngay trong màn chỉnh sửa.'
@@ -639,6 +902,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 12),
+
+                  // Reminder time picker (visible when enabled)
                   if (_reminderEnabled)
                     InkWell(
                       borderRadius: BorderRadius.circular(24),
@@ -656,6 +921,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
               ),
             ),
             const SizedBox(height: 24),
+
+            // ===== SUBMIT BUTTON =====
             FilledButton.icon(
               onPressed: loading ? null : _submit,
               icon: loading

@@ -11,29 +11,112 @@ import org.springframework.stereotype.Repository;
 
 import com.example.demo.entity.Tasks;
 
+/**
+ * =======================================
+ * TaskRepository - Data Access Layer
+ * =======================================
+ * 
+ * Chức năng:
+ * - CRUD Task trong database
+ * - Search tasks
+ * - Filter & Validation queries
+ * - Custom queries cho business logic
+ * 
+ * Chủ yếu dùng cho:
+ * - TaskService (CRUD)
+ * - Search (findByTitleContainingIgnoreCase)
+ * - Filter (by status, priority, date)
+ * - Duplicate validation (existsByTitle...)
+ * 
+ * @author Phan Tuấn Anh
+ * @version 1.0
+ */
 @Repository
 public interface TaskRepository extends JpaRepository<Tasks, Long> {
+    
+    // ==================== SEARCH ====================
+    
+    /**
+     * Tìm kiếm task theo title (case-insensitive)
+     * Dùng cho feature: Tìm kiếm Task
+     * 
+     * @param title Từ khóa tìm kiếm
+     * @return Danh sách tasks chứa title
+     */
     // Tìm kiếm task theo tiêu đề (Phục vụ chức năng Search của Tuấn Anh)
     List<Tasks> findByTitleContainingIgnoreCase(String title);
 
+    // ==================== GET TASKS ====================
+    
+    /**
+     * Lấy danh sách task active của user, sắp xếp theo due date
+     * Dùng cho: Get all tasks, Filter
+     * 
+     * @param userId ID của user
+     * @return Danh sách tasks sorted by dueDate ASC
+     */
     // Lấy danh sách task active của một user cụ thể và sắp xếp theo ngày (Sort)
     List<Tasks> findByUserIdAndIsActiveTrueOrderByDueDateAsc(Long userId);
 
+    /**
+     * Lấy danh sách task của user (cả active và inactive)
+     * 
+     * @param userId ID của user
+     * @return Danh sách all tasks
+     */
     // Lấy danh sách task của user (không filter active)
     List<Tasks> findByUserIdOrderByDueDateAsc(Long userId);
 
-    // Đếm số task active của một user
+    // ==================== COUNT ====================
+    
+    /**
+     * Đếm số task active của user
+     * 
+     * @param userId ID của user
+     * @return Số lượng tasks isActive=true
+     */
+    // Đếm số task active của một user cụ thể
     long countByUserIdAndIsActiveTrue(Long userId);
 
+    /**
+     * Đếm tất cả tasks của user (active + inactive)
+     * 
+     * @param userId ID của user
+     * @return Tổng số tasks
+     */
     // Đếm số task của một user (không filter active)
     long countByUserId(Long userId);
 
+    // ==================== VALIDATION ====================
+    
+    /**
+     * Kiểm tra trùng title task trong cùng category
+     * Business Rule: Không được tạo 2 task trùng tên trong cùng category
+     * 
+     * @param title Tiêu đề task
+     * @param categoryId ID của category
+     * @return true nếu có task trùng, false nếu không
+     */
     // Kiểm tra trùng tên Task trong cùng một Category
     boolean existsByTitleAndCategoryIdAndIsActiveTrue(String title, Long categoryId);
 
+    // ==================== CATEGORY ====================
+    
+    /**
+     * Lấy danh sách task active trong một category
+     * 
+     * @param categoryId ID của category
+     * @return Danh sách tasks
+     */
     // Lấy tất cả task active của một Category
     List<Tasks> findByCategoryIdAndIsActiveTrue(Long categoryId);
 
+    /**
+     * Lấy tất cả tasks (active + inactive) của category
+     * 
+     * @param categoryId ID của category
+     * @return Danh sách all tasks
+     */
     // Lấy tất cả task (active và inactive) của một Category
     List<Tasks> findByCategoryId(Long categoryId);
 

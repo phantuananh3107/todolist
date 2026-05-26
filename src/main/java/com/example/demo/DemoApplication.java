@@ -10,6 +10,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class DemoApplication {
 
 	public static void main(String[] args) {
+		// Set UTF-8 encoding for JVM BEFORE loading dotenv
+		System.setProperty("file.encoding", "UTF-8");
+		System.setProperty("sun.jnu.encoding", "UTF-8");
+		
 		// Load .env file
 		Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
 		dotenv.entries().forEach(entry -> System.setProperty(entry.getKey(), entry.getValue()));

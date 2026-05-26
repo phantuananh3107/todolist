@@ -11,6 +11,54 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * ==========================================
+ * CategorySuggestionService - AI Classification
+ * ==========================================
+ * 
+ * Chức năng:
+ * Tự động gợi ý category dựa vào task description
+ * sử dụng OpenAI API (GPT-3.5-turbo hoặc GPT-4)
+ * 
+ * Flow:
+ * 1. Người dùng nhập task description
+ * 2. Gọi suggestCategories()
+ * 3. Lấy danh sách categories của user
+ * 4. Build prompt cho AI
+ * 5. Call OpenAI API
+ * 6. Parse response (JSON format)
+ * 7. Return top suggestions with match percentage
+ * 
+ * Algorithm:
+ * - Extract keywords from description
+ * - Match với categories
+ * - Calculate similarity using AI
+ * - Return top 3 suggestions
+ * - Include confidence score (0-100%)
+ * - Provide reasoning
+ * 
+ * Example:
+ * POST /api/categories/suggest
+ * {
+ *   "title": "Hoàn thành báo cáo",
+ *   "description": "Viết báo cáo kỹ thuật chi tiết về..."
+ * }
+ * 
+ * Response:
+ * {
+ *   "suggestions": [
+ *     {
+ *       "categoryName": "Công việc học tập",
+ *       "matchPercentage": 95,
+ *       "reason": "Description chứa từ khóa: báo cáo, kỹ thuật"
+ *     }
+ *   ],
+ *   "message": "..."
+ * }
+ * 
+ * @author Phan Tuấn Anh
+ * @version 1.0
+ */
 @Service
 public class CategorySuggestionService {
 
@@ -21,7 +69,25 @@ public class CategorySuggestionService {
     private CategoryRepository categoryRepository;
 
     /**
-     * Gợi ý category dựa vào description sử dụng OpenAI
+     * Gợi ý category dựa vào task description sử dụng OpenAI
+     * 
+     * Quy trình:
+     * 1. Lấy tất cả categories active của user
+     * 2. Nếu user chưa có category → return empty suggestions
+     * 3. Build prompt với danh sách categories
+     * 4. Gọi OpenAI API để phân loại
+     * 5. Parse JSON response từ AI
+     * 6. Filter top 3 suggestions
+     * 7. Return CategorySuggestionsResponse
+     * 
+     * Error Handling:
+     * - Try-catch khi parse JSON
+     * - Try-catch khi gọi OpenAI
+     * - Return friendly error message
+     * 
+     * @param userId ID của user
+     * @param request CategorySuggestionRequest (title, description)
+     * @return CategorySuggestionsResponse (suggestions + message)
      */
     public CategorySuggestionsResponse suggestCategories(Long userId, CategorySuggestionRequest request) {
         // Lấy categories của user

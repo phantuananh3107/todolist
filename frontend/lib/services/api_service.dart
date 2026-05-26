@@ -20,21 +20,13 @@ class ApiService {
   static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
 
   static String get baseUrl {
-<<<<<<< HEAD
-    if (kIsWeb) return 'http://localhost:9090';
-=======
     if (_envBaseUrl.trim().isNotEmpty) return _envBaseUrl.trim();
-    if (kIsWeb) return 'http://localhost:8080';
->>>>>>> b29db77cf9e45015fba985d7dadd131f2c021e9d
+    if (kIsWeb) return 'http://localhost:9090';
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return 'http://10.0.2.2:9090';
       default:
-<<<<<<< HEAD
         return 'http://localhost:9090';
-=======
-        return 'http://127.0.0.1:8080';
->>>>>>> b29db77cf9e45015fba985d7dadd131f2c021e9d
     }
   }
 
