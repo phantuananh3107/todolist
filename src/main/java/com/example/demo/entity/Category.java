@@ -17,6 +17,9 @@ public class Category {
     @Column(nullable = false)
     private String name; // Học tập, Công việc, Cá nhân [cite: 140]
 
+    @Column(name = "color_hex", length = 7)
+    private String colorHex; // Màu hiển thị của category, ví dụ #FF6B57
+
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user; // Chủ sở hữu loại công việc này [cite: 140]

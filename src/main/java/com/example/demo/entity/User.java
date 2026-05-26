@@ -29,6 +29,7 @@ public class User {
     private String role; // ADMIN hoặc USER
 
     private Boolean isActive = true;
+    private Boolean isDeleted = false;
 
     // Mỗi lần logout sẽ tăng giá trị này lên 1.
     // Token cũ sẽ chứa version cũ → so sánh không khớp → bị từ chối.
@@ -38,4 +39,7 @@ public class User {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Tasks> tasks;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Category> categories;
 }

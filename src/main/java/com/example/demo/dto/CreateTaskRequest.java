@@ -1,5 +1,7 @@
 package com.example.demo.dto;
 
+import com.example.demo.entity.Priority;
+import com.example.demo.entity.Status;
 import lombok.*;
 import java.time.LocalDateTime;
 
@@ -10,8 +12,8 @@ import java.time.LocalDateTime;
 public class CreateTaskRequest {
     private String title;              // Tiêu đề công việc
     private String description;        // Mô tả chi tiết
-    private String priority;           // LOW, MEDIUM, HIGH
-    private String status;             // TODO, DOING, DONE, OVERDUE
+    private Priority priority;         // LOW, MEDIUM, HIGH
+    private Status status;             // TODO, DOING, DONE, OVERDUE
     private LocalDateTime dueDate;     // Hạn hoàn thành
     private Long categoryId;           // ID của nhóm công việc
 }

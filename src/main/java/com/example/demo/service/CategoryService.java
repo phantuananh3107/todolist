@@ -15,11 +15,68 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * =============================================
+ * CategoryService - Dịch vụ quản lý hạng mục
+ * =============================================
+ * 
+ * Chức năng chính:
+ * 1. CRUD Category (Create, Read, Update, Delete)
+ * 2. Duplicate name validation (per user)
+ * 3. Cascade soft delete (xóa category → xóa mềm all tasks)
+ * 4. Get categories by user
+ * 
+ * Business Rules:
+ * - Không được tạo 2 category trùng tên (per user)
+ * - Xóa mềm (soft delete): set isActive = false
+ * - Cascade: Khi xóa category, xóa mềm tất cả tasks trong đó
+ * - Chỉ user sở hữu mới có quyền modify
+ * - Chỉ lấy category isActive = true
+ * 
+ * Color validation:
+ * - Format: #RRGGBB (hex color)
+ * - Ví dụ: #FF5733, #00AA00, #0000FF
+ * 
+ * @author Phan Tuấn Anh
+ * @version 1.0
+ */
 @Service
 public class CategoryService {
+
+    /**
+     * Validate và normalize màu hex
+     * 
+     * Quy tắc:
+     * - Phải là format #RRGGBB
+     * - Trim whitespace
+     * - Convert to uppercase
+     * - Tự động thêm # nếu chưa có
+     * 
+     * @param rawColorHex Màu hex thô (có thể không có #)
+     * @return Màu hex normalize (#RRGGBB)
+     * @throws IllegalArgumentException nếu format không hợp lệ
+     */
+    private String normalizeColorHex(String rawColorHex) {
+        if (rawColorHex == null || rawColorHex.trim().isEmpty()) {
+            return null;
+        }
+
+        String normalized = rawColorHex.trim().toUpperCase(Locale.ROOT);
+        if (!normalized.startsWith("#")) {
+            normalized = "#" + normalized;
+        }
+
+        if (!normalized.matches("^#[0-9A-F]{6}$")) {
+            throw new IllegalArgumentException("Màu category không hợp lệ! Dùng định dạng #RRGGBB.");
+        }
+
+        return normalized;
+    }
+
 
     @Autowired
     private CategoryRepository categoryRepository;
@@ -47,14 +104,22 @@ public class CategoryService {
 
         User user = userOpt.get();
 
-        // Kiểm tra trùng tên Category cho user này
-        if (categoryRepository.existsByNameAndUserIdAndIsActiveTrue(request.getName().trim(), userId)) {
+        // Kiểm tra trùng tên Category cho user này (ignore case)
+        if (categoryRepository.existsByNameIgnoreCaseAndUserIdAndIsActiveTrue(request.getName().trim(), userId)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Tên nhóm đã tồn tại!");
+        }
+
+        final String normalizedColorHex;
+        try {
+            normalizedColorHex = normalizeColorHex(request.getColorHex());
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
         }
 
         // Create category
         Category category = new Category();
-        category.setName(request.getName());
+        category.setName(request.getName().trim());
+        category.setColorHex(normalizedColorHex);
         category.setUser(user);
         category.setIsActive(true);
 
@@ -108,6 +173,7 @@ public class CategoryService {
         response.put("id", category.getId());
         response.put("name", category.getName());
         response.put("isActive", category.getIsActive());
+        response.put("colorHex", category.getColorHex());
         response.put("tasks", taskDTOs);
         response.put("taskCount", (long) taskDTOs.size());
 
@@ -134,14 +200,22 @@ public class CategoryService {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Bạn không có quyền sửa nhóm này!");
         }
 
-        // Kiểm tra trùng tên Category (nếu tên mới khác tên cũ)
-        if (!category.getName().equals(request.getName().trim())) {
-            if (categoryRepository.existsByNameAndUserIdAndIsActiveTrue(request.getName().trim(), userId)) {
+        // Kiểm tra trùng tên Category (nếu tên mới khác tên cũ) - ignore case
+        if (!category.getName().equalsIgnoreCase(request.getName().trim())) {
+            if (categoryRepository.existsByNameIgnoreCaseAndUserIdAndIsActiveTrue(request.getName().trim(), userId)) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Tên nhóm đã tồn tại!");
             }
         }
 
-        category.setName(request.getName());
+        final String normalizedColorHex;
+        try {
+            normalizedColorHex = normalizeColorHex(request.getColorHex());
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+        }
+
+        category.setName(request.getName().trim());
+        category.setColorHex(normalizedColorHex);
         Category updated = categoryRepository.save(category);
 
         return ResponseEntity.ok(new CategoryResponseDTO(updated));
@@ -175,6 +249,44 @@ public class CategoryService {
         }
 
         return ResponseEntity.ok("Xóa nhóm thành công!");
+    }
+
+    /**
+     * Khôi phục nhóm đã bị xoá
+     */
+    public ResponseEntity<?> restoreCategory(Long categoryId, Long userId) {
+        Optional<Category> categoryOpt = categoryRepository.findById(categoryId);
+        if (categoryOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Nhóm không tồn tại!");
+        }
+
+        Category category = categoryOpt.get();
+
+        // IDOR check
+        if (!category.getUser().getId().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Bạn không có quyền khôi phục nhóm này!");
+        }
+
+        if (Boolean.TRUE.equals(category.getIsActive())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Nhóm này hiện đang hoạt động!");
+        }
+
+        // Kiểm tra xem có một category khác cùng tên đang active không
+        if (categoryRepository.existsByNameIgnoreCaseAndUserIdAndIsActiveTrue(category.getName(), userId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Tên nhóm này (" + category.getName() + ") đã được sử dụng bởi một nhóm khác đang hoạt động. Vui lòng đổi tên hoặc xoá nhóm hiện có trước khi khôi phục nhóm này!");
+        }
+
+        category.setIsActive(true);
+        categoryRepository.save(category);
+
+        // Cascade restore: Khôi phục toàn bộ các công việc thuộc nhóm này
+        List<Tasks> tasksInGroup = taskRepository.findByCategoryId(categoryId);
+        for (Tasks task : tasksInGroup) {
+            task.setIsActive(true);
+            taskRepository.save(task);
+        }
+
+        return ResponseEntity.ok(new CategoryResponseDTO(category));
     }
 
     /**

@@ -8,6 +8,7 @@ public class AdminUserRequest {
     private String email;
     private String role;
     private Boolean isActive;
+    private Boolean isDeleted;
     private String password;
     private String confirmPassword;
 }

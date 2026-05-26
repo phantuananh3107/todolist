@@ -1,8 +1,21 @@
 package com.example.demo.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
 import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "Reminder")
@@ -16,6 +29,22 @@ public class Reminder {
     @JoinColumn(name = "task_id")
     private Tasks task; // Nhắc cho công việc nào [cite: 142]
 
-    @Column(nullable = false)
+    // Cột DB hiện tại là remind_time (NOT NULL)
+    @Column(name = "remind_time", nullable = false)
     private LocalDateTime remindTime; // Thời gian sẽ thông báo [cite: 142]
+
+    // Tương thích schema cũ vẫn còn cột reminder_time NOT NULL
+    @Column(name = "reminder_time", nullable = false)
+    private LocalDateTime legacyReminderTime;
+
+    // Dùng để tránh bắn notification trùng (scheduler sẽ set khi đã gửi)
+    private LocalDateTime notifiedAt;
+
+    @PrePersist
+    @PreUpdate
+    private void syncReminderTimeColumns() {
+        if (this.remindTime != null) {
+            this.legacyReminderTime = this.remindTime;
+        }
+    }
 }

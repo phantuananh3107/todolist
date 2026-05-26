@@ -29,6 +29,9 @@ public class Tasks {
 
     private LocalDateTime dueDate; // Hạn hoàn thành [cite: 138]
 
+    @Column(nullable = false)
+    private Integer orderIndex = 999999; // Thứ tự ưu tiên làm task (999999 = chưa sắp xếp, sẽ xuất hiện cuối)
+
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user; // Người tạo task [cite: 138]
@@ -42,6 +45,4 @@ public class Tasks {
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Reminder> reminders;
 
-    public enum Priority { LOW, MEDIUM, HIGH }
-    public enum Status { TODO, DOING, DONE, OVERDUE }
 }

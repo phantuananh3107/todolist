@@ -62,6 +62,15 @@ public class UserController {
         return ResponseEntity.ok(new UserResponseDTO(user));
     }
 
+    // --- MỚI: LẤY THÔNG TIN CÁ NHÂN CỦA CHÍNH MÌNH ---
+    @GetMapping("/profile")
+    public ResponseEntity<?> getProfile() {
+        String currentUserId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findById(Long.parseLong(currentUserId))
+                .<ResponseEntity<?>>map(user -> ResponseEntity.ok(new UserResponseDTO(user)))
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Không tìm thấy người dùng!"));
+    }
+
     // 2. Đăng nhập
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
@@ -72,6 +81,9 @@ public class UserController {
             // liệu cũ)
             if (passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())
                     || loginRequest.getPassword().equals(user.getPassword())) {
+                if (Boolean.TRUE.equals(user.getIsDeleted())) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Tài khoản này đã bị xoá!");
+                }
                 if (Boolean.FALSE.equals(user.getIsActive())) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Tài khoản đã bị khoá!");
                 }
